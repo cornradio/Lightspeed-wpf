@@ -379,10 +379,10 @@
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
-                        <TextBlock Text="Folder Operations" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <!-- <TextBlock Text="Folder Operations" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <Button Content="Open in Explorer" Style="{StaticResource SettingsButtonStyle}" Click="BtnOpenInExplorer_Click"/>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#3D3D3D" Margin="0,15"/> -->
 
                         <TextBlock Text="Display Settings" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         
@@ -401,7 +401,11 @@
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
                         <TextBlock Text="Help Links" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <TextBlock Text="GitHub: https://github.com/kasus/lightspeed-UI" Foreground="#6B9FFF" Margin="0,5"/>
+                        <TextBlock Margin="0,5">
+                            <Hyperlink NavigateUri="https://github.com/cornradio/lightspeed-UI" RequestNavigate="Hyperlink_RequestNavigate">
+                                <TextBlock Text="https://github.com/cornradio/lightspeed-UI" Foreground="#6B9FFF"/>
+                            </Hyperlink>
+                        </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
