@@ -10,7 +10,8 @@
         ResizeMode="CanResizeWithGrip"
         StateChanged="Window_StateChanged"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
-        Closing="Window_Closing">
+        Closing="Window_Closing"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <Window.Resources>
         <Style x:Key="FolderButtonStyle" TargetType="Button">
@@ -212,6 +213,9 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#2D2D2D"/>
                 </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#264F78"/>
+                </Trigger>
                 <DataTrigger Binding="{Binding JustOpened}" Value="True">
                     <Setter Property="Background" Value="#2E7D32"/>
                 </DataTrigger>
@@ -236,6 +240,9 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#2D2D2D"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#264F78"/>
                 </Trigger>
                 <DataTrigger Binding="{Binding JustOpened}" Value="True">
                     <Setter Property="Background" Value="#2E7D32"/>
@@ -376,6 +383,11 @@
                         <Button Content="Generate + Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
                         
                         <CheckBox x:Name="ChkAutoStartAHK" Content="AHK Auto Start" Foreground="White" Margin="0,10,0,5" Checked="ChkAutoStartAHK_Changed" Unchecked="ChkAutoStartAHK_Changed"/>
+                        <TextBlock Margin="0,5">
+                            <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate">
+                                <TextBlock Text="下载 AHK (懒人包)" Foreground="#6B9FFF"/>
+                            </Hyperlink>
+                        </TextBlock>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
@@ -427,7 +439,23 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <ToggleButton x:Name="BtnListView" Content="List" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
                     <ToggleButton x:Name="BtnIconView" Content="Icon" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
-                    <Button Content="Setting" Style="{StaticResource SideButtonStyle}" Click="BtnSettings_Click"/>
+                    <ToggleButton x:Name="BtnSettings" Content="Setting" Click="BtnSettings_Click" Height="37" Margin="2,2" Background="#3D3D3D" Foreground="White" BorderThickness="0">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Padding="15,0">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
+                                    </Trigger>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#569CD3"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
                 </StackPanel>
             </Grid>
         </Border>

@@ -71,6 +71,9 @@ namespace Lightspeed_wpf
         [DllImport("gdi32.dll")]
         private static extern bool DeleteObject(IntPtr hObject);
 
+        [DllImport("imm32.dll")]
+        private static extern bool ImmDisableIME(IntPtr hkl);
+
         public MainWindow()
         {
             InitializeComponent();
@@ -160,6 +163,8 @@ namespace Lightspeed_wpf
             windowHandle = new WindowInteropHelper(this).Handle;
             source = HwndSource.FromHwnd(windowHandle);
             source?.AddHook(HwndHook);
+
+            ImmDisableIME(IntPtr.Zero);
 
             RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
 
@@ -426,10 +431,12 @@ namespace Lightspeed_wpf
             if (SettingsPanel.Visibility == Visibility.Collapsed)
             {
                 SettingsPanel.Visibility = Visibility.Visible;
+                BtnSettings.IsChecked = true;
             }
             else
             {
                 SettingsPanel.Visibility = Visibility.Collapsed;
+                BtnSettings.IsChecked = false;
             }
         }
 
@@ -750,6 +757,63 @@ return
                 UseShellExecute = true
             });
             e.Handled = true;
+        }
+
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key >= Key.A && e.Key <= Key.Z)
+            {
+                char searchChar = (char)('a' + (e.Key - Key.A));
+                SelectNextItemByChar(searchChar);
+                e.Handled = true;
+            }
+            else if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            {
+                int num = e.Key - Key.D0;
+                NavigateToFolder(num);
+                e.Handled = true;
+            }
+            else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
+            {
+                int num = e.Key - Key.NumPad0;
+                NavigateToFolder(num);
+                e.Handled = true;
+            }
+        }
+
+        private void SelectNextItemByChar(char c)
+        {
+            var items = isListView ? FileListView.Items : IconListView.Items;
+            int startIndex = -1;
+
+            if (isListView && FileListView.SelectedItem != null)
+            {
+                startIndex = FileListView.Items.IndexOf(FileListView.SelectedItem);
+            }
+            else if (!isListView && IconListView.SelectedItem != null)
+            {
+                startIndex = IconListView.Items.IndexOf(IconListView.SelectedItem);
+            }
+
+            for (int i = 1; i <= items.Count; i++)
+            {
+                int index = (startIndex + i) % items.Count;
+                var item = items[index] as FileItem;
+                if (item != null && char.ToLower(item.Name[0]) == c)
+                {
+                    if (isListView)
+                    {
+                        FileListView.SelectedItem = item;
+                        FileListView.ScrollIntoView(item);
+                    }
+                    else
+                    {
+                        IconListView.SelectedItem = item;
+                        IconListView.ScrollIntoView(item);
+                    }
+                    break;
+                }
+            }
         }
 
         private void OpenWith(string path)
