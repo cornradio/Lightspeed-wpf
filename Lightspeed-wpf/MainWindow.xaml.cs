@@ -1,8 +1,10 @@
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,6 +16,8 @@ namespace Lightspeed_wpf
         private List<Button> folderButtons = new List<Button>();
         private int currentFolder = 0;
         private string basePath = @"C:\lightspeed";
+        private double iconSize = 32;
+        private double rowSpacing = 0;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -37,6 +41,9 @@ namespace Lightspeed_wpf
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
+
+        [DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr hObject);
 
         public MainWindow()
         {
@@ -91,7 +98,9 @@ namespace Lightspeed_wpf
                     {
                         Name = Path.GetFileName(dir),
                         FullPath = dir,
-                        IsDirectory = true
+                        IsDirectory = true,
+                        IconSize = iconSize,
+                        RowMargin = new Thickness(0, (int)rowSpacing / 2, 0, (int)rowSpacing / 2)
                     };
                     item.Icon = GetIcon(dir, true);
                     FileListView.Items.Add(item);
@@ -103,7 +112,9 @@ namespace Lightspeed_wpf
                     {
                         Name = Path.GetFileName(file),
                         FullPath = file,
-                        IsDirectory = false
+                        IsDirectory = false,
+                        IconSize = iconSize,
+                        RowMargin = new Thickness(0, (int)rowSpacing / 2, 0, (int)rowSpacing / 2)
                     };
                     item.Icon = GetIcon(file, false);
                     FileListView.Items.Add(item);
@@ -158,9 +169,6 @@ namespace Lightspeed_wpf
             }
             return CreateDefaultIcon(isDirectory);
         }
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
 
         private ImageSource CreateDefaultIcon(bool isFolder)
         {
@@ -250,7 +258,113 @@ namespace Lightspeed_wpf
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("设置面板 - 功能开发中");
+            if (SettingsPanel.Visibility == Visibility.Collapsed)
+            {
+                SettingsPanel.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                SettingsPanel.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void BtnCreateFolders_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Directory.Exists(basePath))
+            {
+                Directory.CreateDirectory(basePath);
+            }
+
+            for (int i = 0; i < 10; i++)
+            {
+                string folderPath = Path.Combine(basePath, i.ToString());
+                if (!Directory.Exists(folderPath))
+                {
+                    Directory.CreateDirectory(folderPath);
+                }
+            }
+
+            MessageBox.Show("文件夹创建完成！");
+            NavigateToFolder(currentFolder);
+        }
+
+        private void BtnGenerateAHK_Click(object sender, RoutedEventArgs e)
+        {
+            CreateAHK();
+        }
+
+        private void BtnStartAHK_Click(object sender, RoutedEventArgs e)
+        {
+            string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
+            if (File.Exists(ahkPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = ahkPath,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                MessageBox.Show("AHK 文件不存在，请先点击「生成 AHK」", "提示");
+            }
+        }
+
+        private void BtnGenerateAndStart_Click(object sender, RoutedEventArgs e)
+        {
+            CreateAHK();
+            BtnStartAHK_Click(sender, e);
+        }
+
+        private void CreateAHK()
+        {
+            string ahkFilePath = Path.Combine(basePath, "lightspeed.ahk");
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("#SingleInstance, Force");
+            sb.AppendLine("Menu, Tray, Icon, netshell.dll, 30");
+            sb.AppendLine("#If WinActive(\"ahk_exe Lightspeed-wpf.exe\")");
+            sb.AppendLine("XButton1::Send, {Alt down}{Left}{Alt up}");
+            sb.AppendLine("XButton2::Send, {Alt down}{Right}{Alt up}");
+            sb.AppendLine("#If");
+
+            for (int i = 0; i < 10; i++)
+            {
+                string folder = Path.Combine(basePath, i.ToString());
+                sb.AppendLine($"!{i}::");
+                sb.AppendLine($"Run, \"{folder}\"");
+                sb.AppendLine("return");
+            }
+
+            File.WriteAllText(ahkFilePath, sb.ToString());
+            MessageBox.Show($"AHK 已生成: {ahkFilePath}");
+        }
+
+        private void BtnOpenInExplorer_Click(object sender, RoutedEventArgs e)
+        {
+            string currentPath = Path.Combine(basePath, currentFolder.ToString());
+            if (Directory.Exists(currentPath))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", currentPath);
+            }
+        }
+
+        private void SliderIconSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TxtIconSize == null) return;
+            
+            iconSize = (int)SliderIconSize.Value;
+            TxtIconSize.Text = ((int)iconSize).ToString();
+            NavigateToFolder(currentFolder);
+        }
+
+        private void SliderRowSpacing_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (TxtRowSpacing == null) return;
+            
+            rowSpacing = SliderRowSpacing.Value;
+            TxtRowSpacing.Text = ((int)rowSpacing).ToString();
+            NavigateToFolder(currentFolder);
         }
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
@@ -308,5 +422,7 @@ namespace Lightspeed_wpf
         public string FullPath { get; set; } = "";
         public bool IsDirectory { get; set; }
         public ImageSource? Icon { get; set; }
+        public double IconSize { get; set; } = 32;
+        public Thickness RowMargin { get; set; } = new Thickness(0);
     }
 }
