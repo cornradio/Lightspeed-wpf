@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lightspeed - 极速启动器</title>
+    <link rel="icon" type="image/png" href="screenshots/icon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --accent-light: #818cf8;
+            --gradient-start: #6366f1;
+            --gradient-end: #8b5cf6;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center top, var(--accent-glow), transparent 70%);
+            pointer-events: none;
+        }
+
+        .logo-container {
+            margin-bottom: 2rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .platform-badge {
+            position: absolute;
+            top: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .platform-badge svg {
+            opacity: 0.8;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            font-weight: 800;
+            color: white;
+            box-shadow: 0 20px 60px var(--accent-glow);
+        }
+        
+        .logo img {
+            width: 100%;
+            height: 100%;
+            border-radius: 28px;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            font-weight: 300;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            box-shadow: 0 10px 40px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 50px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+        }
+
+        .scroll-indicator svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-secondary);
+        }
+
+        .features {
+            padding: 8rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .screenshots {
+            padding: 8rem 2rem;
+            background: var(--bg-secondary);
+        }
+
+        .screenshots-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .screenshots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .screenshot-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            padding: 1rem;
+        }
+
+        .screenshot-card:hover {
+            transform: scale(1.02);
+        }
+
+        .screenshot-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+
+        .screenshot-placeholder {
+            aspect-ratio: 16/9;
+            background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .actual-screenshot {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .screenshot-placeholder svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .screenshot-info {
+            padding: 1.5rem;
+        }
+
+        .screenshot-info h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .screenshot-info p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .how-it-works {
+            padding: 8rem 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .steps {
+            display: flex;
+            flex-direction: column;
+            gap: 3rem;
+        }
+
+        .step {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-content p {
+            color: var(--text-secondary);
+        }
+
+        .download {
+            padding: 8rem 2rem;
+            background: var(--bg-secondary);
+            text-align: center;
+        }
+
+        .download-inner {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .download h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .download p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .version-info {
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .dependencies {
+            padding: 8rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .dependencies-inner {
+            max-width: 800px;
+        }
+
+        .dependencies-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .dependency-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .dependency-card:hover {
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .dependency-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .dependency-info {
+            flex: 1;
+        }
+
+        .dependency-info h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .dependency-info p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .dependency-arrow {
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .dependency-card:hover .dependency-arrow {
+            color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        footer p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .shortcuts {
+            padding: 4rem 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .shortcuts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .shortcut-item {
+            background: var(--bg-card);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .shortcut-keys {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .key {
+            background: var(--bg-primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .usage-tip {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .usage-tip h4 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .usage-tip ul {
+            list-style: none;
+            color: var(--text-secondary);
+        }
+
+        .usage-tip li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .usage-tip li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero .tagline {
+                font-size: 1.1rem;
+            }
+
+            .step {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .feature-card, .screenshot-card {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="platform-badge">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M0 20h12v-8l-12-8v8zm12 0v-8h12v8h-12zM0 12h12v-8h-12v8zm12 0h12v-8h-12v8z"/></svg>
+            Windows Only
+        </div>
+        <div class="logo-container">
+            <div class="logo">
+                <img src="screenshots/icon.png" alt="Lightspeed Logo">
+            </div>
+        </div>
+        <h1>Lightspeed</h1>
+        <p class="tagline">极速启动器 · 让效率触手可及</p>
+        <div class="cta-buttons">
+            <a href="#download" class="btn btn-primary">立即下载</a>
+            <a href="#features" class="btn btn-secondary">了解更多</a>
+        </div>
+        <div class="scroll-indicator">
+            <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="section-header">
+            <h2>为什么选择 Lightspeed?</h2>
+            <p>专为高效人士打造的极速启动解决方案</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📁</div>
+                <h3>十大快速文件夹</h3>
+                <p>支持 0-9 十个快捷文件夹，每个文件夹对应一个数字键，轻松分类管理常用应用和文件。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>智能快捷键</h3>
+                <p>自动生成 AutoHotkey 脚本，按数字键 + 字母首键即可秒开应用。例如按 1 然后按 V 启动 VS Code。 </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>全局热键触发</h3>
+                <p>点击桌面或任务栏后即可使用快捷键，随时随地快速启动你需要的内容。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>两种模式</h3>
+                <p>应用提供 list 和 icon 两种展示模式，icon适合以视觉为主的图标展示，list适合以文字为主的文件管理。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🖥️</div>
+                <h3>Web 预览</h3>
+                <p>内置 WebBrowser 组件，可直接预览文件夹内容，支持快捷键导航浏览。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔧</div>
+                <h3>简单配置</h3>
+                <p>直观的设置面板，轻松创建文件夹、生成脚本、管理图标大小、下载依赖。</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="shortcuts">
+        <div class="section-header">
+            <h2>快捷键使用</h2>
+            <p>掌握这些快捷键，效率再升级</p>
+        </div>
+
+        <div class="shortcuts-grid">
+            <div class="shortcut-item">
+                <span>启动/隐藏 lightspeed</span>
+                <div class="shortcut-keys">
+                    <span class="key">Alt</span>
+                    <span class="key">S</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>完全关闭 lightspeed</span>
+                <div class="shortcut-keys">
+                    <span class="key">右键点击</span>
+                    <span class="key">X</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>打开文件夹</span>
+                <div class="shortcut-keys">
+                    <span class="key">Alt</span>
+                    <span class="key">0-9</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>启动应用</span>
+                <div class="shortcut-keys">
+                    <span class="key">0-9</span>
+                    <span class="key">首字母</span>
+                </div>
+            </div>
+        </div>
+        <div class="usage-tip">
+            <h4>💡 使用提示</h4>
+            <ul>
+                <li>使用前需点击桌面或任务栏，再按下快捷键，这样可以避免在游戏过程中误触</li>
+                <li>例如：在文件夹 1 中有 VSCode，按 1 后再按 V 即可启动</li>
+                <li>例如：按下 Alt + 1 可以打开文件夹 C:\lightspeed\1</li>
+                <li>可以点击闪电按钮或者重启应用时自动刷新 ahk 脚本,比如你添加了一个新的程序但是使用快捷键却无法启动你需要点击一下闪电按钮.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="screenshots" id="screenshots">
+        <div class="screenshots-inner">
+            <div class="section-header">
+                <h2>截图预览</h2>
+                <p>先睹为快，看看 Lightspeed 的实际效果</p>
+            </div>
+            <div class="screenshots-grid">
+                <div class="screenshot-card">
+                    <img class="actual-screenshot" src="screenshots/shot1.jpg" alt="主界面截图">
+                    <div class="screenshot-info">
+                        <h4>主界面</h4>
+                        <p>简洁直观的启动器界面</p>
+                    </div>
+                </div>
+                <div class="screenshot-card">
+                    <img class="actual-screenshot" src="screenshots/shot2.png" alt="设置面板截图">
+                    <div class="screenshot-info">
+                        <h4>列表模式</h4>
+                        <p>直观有效率的列表模式</p>
+                    </div>
+                </div>
+                <div class="screenshot-card">
+                    <img class="actual-screenshot" src="screenshots/shot3.jpg" alt="文件浏览器截图">
+                    <div class="screenshot-info">
+                        <h4>文件浏览器</h4>
+                        <p>快速浏览和访问文件</p>
+                    </div>
+                </div>
+        </div>
+    </section>
+
+    <section class="how-it-works" id="how-it-works">
+        <div class="section-header">
+            <h2>如何使用</h2>
+            <p>三步开启你的极速体验</p>
+        </div>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>创建文件夹</h3>
+                    <p>在设置面板中创建 0-9 分类文件夹，将常用的应用、文件归类放置到对应数字文件夹中。</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>生成快捷键</h3>
+                    <p>点击生成 AHK 脚本，程序会自动分析文件夹内容并生成智能快捷键映射（数字+首字母）。</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>开始使用</h3>
+                    <p>点击桌面激活后，按数字键再按首字母即可秒开应用。从此告别层层嵌套的文件夹！</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="download" id="download">
+        <div class="download-inner">
+            <h2>立即体验</h2>
+            <p>告别繁琐，一键直达。Lightspeed 让你的工作流如光速般流畅。</p>
+            <div class="download-buttons">
+                <a href="#" class="btn btn-primary">下载 Release</a>
+                <a href="https://github.com/kasus-dev/Lightspeed-wpf" class="btn btn-secondary" target="_blank">查看源码</a>
+            </div>
+            <p class="version-info">
+                当前版本: v1.0.0 · 需要 .NET 9.0+ · Windows 10/11
+            </p>
+        </div>
+    </section>
+
+    <section class="dependencies">
+        <div class="dependencies-inner">
+            <div class="section-header">
+                <h2>依赖下载</h2>
+                <p>使用前请确保已安装以下依赖</p>
+            </div>
+            <div class="dependencies-grid">
+                <a href="https://dotnet.microsoft.com/en-us/download/dotnet/9.0" class="dependency-card" target="_blank">
+                    <div class="dependency-icon">.NET</div>
+                    <div class="dependency-info">
+                        <h4>.NET 9.0 Runtime</h4>
+                        <p>程序运行必需的核心组件</p>
+                    </div>
+                    <div class="dependency-arrow">→</div>
+                </a>
+                <a href="https://kasusa.lanzoul.com/iClHk28thruj" class="dependency-card" target="_blank">
+                    <div class="dependency-icon">AHK</div>
+                    <div class="dependency-info">
+                        <h4>AutoHotkey v1</h4>
+                        <p>快捷键脚本运行时环境</p>
+                    </div>
+                    <div class="dependency-arrow">→</div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>
+            <a href="https://github.com/cornradio/Lightspeed-wpf">GitHub</a>
+        </p>
+    </footer>
+</body>
+</html>
