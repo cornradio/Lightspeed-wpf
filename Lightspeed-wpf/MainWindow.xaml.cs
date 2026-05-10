@@ -1,6 +1,8 @@
 using System.Drawing;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -424,7 +426,8 @@ namespace Lightspeed_wpf
 
         private void BtnGenerateAHK_Click(object sender, RoutedEventArgs e)
         {
-            CreateAHK();
+            CreateAHK(basePath);
+            WpfMessageBox.Show($"AHK 已生成: {Path.Combine(basePath, "lightspeed.ahk")}");
         }
 
         private void BtnStartAHK_Click(object sender, RoutedEventArgs e)
@@ -446,32 +449,160 @@ namespace Lightspeed_wpf
 
         private void BtnGenerateAndStart_Click(object sender, RoutedEventArgs e)
         {
-            CreateAHK();
+            CreateAHK(basePath);
             BtnStartAHK_Click(sender, e);
         }
 
-        private void CreateAHK()
+        public void CreateAHK(string folderPath)
         {
-            string ahkFilePath = Path.Combine(basePath, "lightspeed.ahk");
+            string ahkFilePath = Path.Combine(folderPath, "lightspeed.ahk");
 
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            sb.AppendLine("#SingleInstance, Force");
-            sb.AppendLine("Menu, Tray, Icon, netshell.dll, 30");
-            sb.AppendLine("#If WinActive(\"ahk_exe Lightspeed-wpf.exe\")");
-            sb.AppendLine("XButton1::Send, {Alt down}{Left}{Alt up}");
-            sb.AppendLine("XButton2::Send, {Alt down}{Right}{Alt up}");
-            sb.AppendLine("#If");
+            string ahkContent = @"
+#SingleInstance , Force
+Menu, Tray, Icon, netshell.dll, 30 
+#If  WinActive(""ahk_exe lightspeed-UI.exe"") 
+XButton1::Send, {alt down}{Left}{alt up}
+XButton2::Send, {alt down}{right}{alt up}
+#If WinActive(""ahk_class Shell_TrayWnd"") or WinActive(""ahk_class Shell_SecondaryTrayWnd"") or WinActive(""python  lightspeed.py"") or WinActive(""ahk_class WorkerW"")  or WinActive(""ahk_class Progman"")
+SetTitleMatchMode, 2
 
-            for (int i = 0; i < 10; i++)
+ShowAndHideText(text, duration) {
+    Gui, +LastFound +AlwaysOnTop -Caption +ToolWindow +Disabled
+    Gui, Color, 000000 ; background black
+    Gui, Font, s15, Verdana ; fontsize and fontname
+
+    textWidth := 400
+    textHeight := 40
+    winX := 0
+    winY := 20
+
+    Gui, Add, Text, x%winX% y%winY% w%textWidth% h%textHeight% cFFFFFF Center, %text%
+    Gui, Show, NA
+    WinSet, Transparent, 180 ; 0 is fully transparent, 255 is fully opaque
+
+    SetTimer, DestroyGui, %duration%
+    return
+
+    DestroyGui:
+    Gui, Destroy
+    return
+}
+
+open_or_activate(title, path) {
+    ShowAndHideText(title, 600)
+    if (WinExist(title)) {
+        WinActivate, %title%
+    } else {
+        Run, ""%path%""
+        }
+}
+
+!0::
+open_or_activate(""C:\lightspeed\0"",""C:\lightspeed\0"")
+return
+!1::
+open_or_activate(""C:\lightspeed\1"",""C:\lightspeed\1"")
+return
+!2::
+open_or_activate(""C:\lightspeed\2"",""C:\lightspeed\2"")
+return
+!3::
+open_or_activate(""C:\lightspeed\3"",""C:\lightspeed\3"")
+return
+!4::
+open_or_activate(""C:\lightspeed\4"",""C:\lightspeed\4"")
+return
+!5::
+open_or_activate(""C:\lightspeed\5"",""C:\lightspeed\5"")
+return
+!6::
+open_or_activate(""C:\lightspeed\6"",""C:\lightspeed\6"")
+return
+!7::
+open_or_activate(""C:\lightspeed\7"",""C:\lightspeed\7"")
+return
+!8::
+open_or_activate(""C:\lightspeed\8"",""C:\lightspeed\8"")
+return
+!9::
+open_or_activate(""C:\lightspeed\9"",""C:\lightspeed\9"")
+return
+";
+
+            var lightspeed_obj_list = LoadFolder2objList(folderPath);
+            
+            StringBuilder sb = new StringBuilder();
+            sb.Append("--- Hotkeys ---\n");
+            sb.Append("Alt+0~9 : Open Folders\n");
+            foreach (var item in lightspeed_obj_list)
             {
-                string folder = Path.Combine(basePath, i.ToString());
-                sb.AppendLine($"!{i}::");
-                sb.AppendLine($"Run, \"{folder}\"");
-                sb.AppendLine("return");
+                sb.Append($"{item.HotkeyStr} : {item.Title}\n");
+            }
+            string helpStringText = sb.ToString();
+            File.WriteAllText(Path.Combine(folderPath, "help.txt"), helpStringText);
+
+            ahkContent += $@"
+!/::
+Run, ""{Assembly.GetExecutingAssembly().Location}"" --help
+return
+" + "\n";
+
+            foreach (var item in lightspeed_obj_list)
+            {
+                ahkContent += (item.getAhkString());
+                ahkContent += "\n";
             }
 
-            File.WriteAllText(ahkFilePath, sb.ToString());
-            WpfMessageBox.Show($"AHK 已生成: {ahkFilePath}");
+            System.IO.File.WriteAllText(ahkFilePath, ahkContent, System.Text.Encoding.GetEncoding("GBK"));
+        }
+
+        public List<lightspeed_obj> LoadFolder2objList(string folderPath)
+        {
+            var lightspeed_obj_list = new List<lightspeed_obj>();
+            var dubcheckList = new List<string>();
+            for (int i = 0; i < 10; i++)
+            {
+                var tf = folderPath + "\\" + i;
+                if (!Directory.Exists(tf)) continue;
+                var entries = Directory.GetFileSystemEntries(tf);
+
+                foreach (var file in entries)
+                {
+                    var hotkey = "";
+                    var title = "";
+                    if (Path.GetFileName(file) == "desktop.ini") continue;
+
+                    if (Path.GetFileName(file)[0] >= 'A' && Path.GetFileName(file)[0] <= 'Z' || Path.GetFileName(file)[0] >= 'a' && Path.GetFileName(file)[0] <= 'z')
+                    {
+                        hotkey = i + " & " + char.ToLower(Path.GetFileName(file)[0]);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"nope{Path.GetFileName(file)}");
+                        continue;
+                    }
+
+                    if (Path.GetFileName(file).StartsWith("["))
+                    {
+                        hotkey = i + " & " + char.ToLower(Path.GetFileName(file)[1]);
+                        title = Path.GetFileName(file).Substring(3).Replace(".lnk", "").Replace(" - 快捷方式", "").Replace(" - 副本", "");
+                    }
+
+                    if (dubcheckList.Contains(hotkey))
+                    {
+                        Console.WriteLine($"{Path.GetFileName(file)} :dublicated key");
+                        continue;
+                    }
+
+                    dubcheckList.Add(hotkey);
+                    title = System.IO.Path.GetFileNameWithoutExtension(file).Replace(" - 快捷方式", "").Replace(" - 副本", "");
+                    var filepath = Path.Combine(folderPath, file);
+                    lightspeed_obj_list.Add(new lightspeed_obj(title, filepath, hotkey));
+
+                }
+            }
+
+            return lightspeed_obj_list;
         }
 
         private void BtnOpenInExplorer_Click(object sender, RoutedEventArgs e)
