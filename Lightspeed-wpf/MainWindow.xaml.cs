@@ -32,8 +32,8 @@ namespace Lightspeed_wpf
         private List<WpfButton> folderButtons = new List<WpfButton>();
         private int currentFolder = 0;
         private string basePath = @"C:\lightspeed";
-        private double listIconSize = 32;
-        private double iconIconSize = 64;
+        private double listIconSize = 30;
+        private double iconIconSize = 60;
         private Forms.NotifyIcon? notifyIcon;
         private bool isListView = true;
         private IntPtr windowHandle;
@@ -202,16 +202,18 @@ namespace Lightspeed_wpf
 
                 foreach (var dir in dirs)
                 {
-                    var item = CreateFileItem(dir, true);
-                    FileListView.Items.Add(item);
-                    IconListView.Items.Add(item);
+                    var fileItem = CreateFileItem(dir, true, false);
+                    var iconItem = CreateFileItem(dir, true, true);
+                    FileListView.Items.Add(fileItem);
+                    IconListView.Items.Add(iconItem);
                 }
 
                 foreach (var file in files)
                 {
-                    var item = CreateFileItem(file, false);
-                    FileListView.Items.Add(item);
-                    IconListView.Items.Add(item);
+                    var fileItem = CreateFileItem(file, false, false);
+                    var iconItem = CreateFileItem(file, false, true);
+                    FileListView.Items.Add(fileItem);
+                    IconListView.Items.Add(iconItem);
                 }
             }
             catch (Exception ex)
@@ -222,9 +224,9 @@ namespace Lightspeed_wpf
             UpdateFolderButtonSelection(folderNum);
         }
 
-        private FileItem CreateFileItem(string path, bool isDirectory)
+        private FileItem CreateFileItem(string path, bool isDirectory, bool isIconMode)
         {
-            double size = isListView ? listIconSize : iconIconSize;
+            double size = isIconMode ? iconIconSize : listIconSize;
             return new FileItem
             {
                 Name = Path.GetFileName(path),

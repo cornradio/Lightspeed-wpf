@@ -383,14 +383,14 @@
                         
                         <TextBlock Text="Icon Size (List Mode)" Foreground="White" Margin="0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="SliderIconSize" Width="200" Minimum="16" Maximum="64" Value="32" ValueChanged="SliderIconSize_ValueChanged"/>
-                            <TextBlock x:Name="TxtIconSize" Text="32" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <Slider x:Name="SliderIconSize" Width="200" Minimum="16" Maximum="64" Value="30" ValueChanged="SliderIconSize_ValueChanged"/>
+                            <TextBlock x:Name="TxtIconSize" Text="30" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <TextBlock Text="Icon Size (Icon Mode)" Foreground="White" Margin="0,10,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="SliderIconSizeIcon" Width="200" Minimum="32" Maximum="128" Value="64" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
-                            <TextBlock x:Name="TxtIconSizeIcon" Text="64" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <Slider x:Name="SliderIconSizeIcon" Width="200" Minimum="32" Maximum="128" Value="60" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
+                            <TextBlock x:Name="TxtIconSizeIcon" Text="60" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
