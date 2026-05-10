@@ -1,23 +1,28 @@
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Forms = System.Windows.Forms;
+using WpfButton = System.Windows.Controls.Button;
+using WpfMessageBox = System.Windows.MessageBox;
+using WpfClipboard = System.Windows.Clipboard;
 
 namespace Lightspeed_wpf
 {
     public partial class MainWindow : Window
     {
-        private List<Button> folderButtons = new List<Button>();
+        private List<WpfButton> folderButtons = new List<WpfButton>();
         private int currentFolder = 0;
         private string basePath = @"C:\lightspeed";
-        private double iconSize = 32;
-        private double rowSpacing = 0;
+        private double listIconSize = 32;
+        private double iconIconSize = 64;
+        private Forms.NotifyIcon? notifyIcon;
+        private bool isListView = true;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -36,6 +41,7 @@ namespace Lightspeed_wpf
 
         private const uint SHGFI_ICON = 0x100;
         private const uint SHGFI_SMALLICON = 0x1;
+        private const uint SHGFI_LARGEICON = 0x0;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
         private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
 
@@ -49,6 +55,7 @@ namespace Lightspeed_wpf
         {
             InitializeComponent();
             InitializeFolderButtons();
+            InitializeTrayIcon();
             Loaded += MainWindow_Loaded;
         }
 
@@ -66,6 +73,31 @@ namespace Lightspeed_wpf
             folderButtons.Add(Btn9);
         }
 
+        private void InitializeTrayIcon()
+        {
+            notifyIcon = new Forms.NotifyIcon();
+            string iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
+            if (System.IO.File.Exists(iconPath))
+            {
+                notifyIcon.Icon = new System.Drawing.Icon(iconPath);
+            }
+            else
+            {
+                notifyIcon.Icon = SystemIcons.Application;
+            }
+            notifyIcon.Text = "Lightspeed";
+            notifyIcon.Visible = false;
+            notifyIcon.DoubleClick += (s, e) => ShowFromTray();
+        }
+
+        private void ShowFromTray()
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            if (notifyIcon != null) notifyIcon.Visible = false;
+        }
+
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             if (!Directory.Exists(basePath))
@@ -81,6 +113,7 @@ namespace Lightspeed_wpf
             string path = Path.Combine(basePath, folderNum.ToString());
 
             FileListView.Items.Clear();
+            IconListView.Items.Clear();
 
             if (!Directory.Exists(path))
             {
@@ -94,44 +127,43 @@ namespace Lightspeed_wpf
 
                 foreach (var dir in dirs)
                 {
-                    var item = new FileItem
-                    {
-                        Name = Path.GetFileName(dir),
-                        FullPath = dir,
-                        IsDirectory = true,
-                        IconSize = iconSize,
-                        RowMargin = new Thickness(0, (int)rowSpacing / 2, 0, (int)rowSpacing / 2)
-                    };
-                    item.Icon = GetIcon(dir, true);
+                    var item = CreateFileItem(dir, true);
                     FileListView.Items.Add(item);
+                    IconListView.Items.Add(item);
                 }
 
                 foreach (var file in files)
                 {
-                    var item = new FileItem
-                    {
-                        Name = Path.GetFileName(file),
-                        FullPath = file,
-                        IsDirectory = false,
-                        IconSize = iconSize,
-                        RowMargin = new Thickness(0, (int)rowSpacing / 2, 0, (int)rowSpacing / 2)
-                    };
-                    item.Icon = GetIcon(file, false);
+                    var item = CreateFileItem(file, false);
                     FileListView.Items.Add(item);
+                    IconListView.Items.Add(item);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"无法读取文件夹: {ex.Message}");
+                WpfMessageBox.Show($"无法读取文件夹: {ex.Message}");
             }
 
             UpdateFolderButtonSelection(folderNum);
         }
 
+        private FileItem CreateFileItem(string path, bool isDirectory)
+        {
+            double size = isListView ? listIconSize : iconIconSize;
+            return new FileItem
+            {
+                Name = Path.GetFileName(path),
+                FullPath = path,
+                IsDirectory = isDirectory,
+                IconSize = size,
+                Icon = GetIcon(path, isDirectory)
+            };
+        }
+
         private ImageSource GetIcon(string path, bool isDirectory)
         {
             SHFILEINFO shfi = new SHFILEINFO();
-            uint flags = SHGFI_ICON | SHGFI_SMALLICON;
+            uint flags = SHGFI_ICON | SHGFI_LARGEICON;
             uint attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
 
             IntPtr hImg = SHGetFileInfo(path, attributes, ref shfi, (uint)Marshal.SizeOf(shfi), flags);
@@ -140,9 +172,12 @@ namespace Lightspeed_wpf
             {
                 try
                 {
-                    using (var bitmap = new Bitmap(32, 32))
+                    int iconSize = 64;
+                    using (var bitmap = new Bitmap(iconSize, iconSize))
                     using (var graphics = Graphics.FromImage(bitmap))
                     {
+                        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
                         graphics.DrawIcon(System.Drawing.Icon.FromHandle(shfi.hIcon), 0, 0);
                         var hBitmap = bitmap.GetHbitmap();
                         try
@@ -196,17 +231,17 @@ namespace Lightspeed_wpf
             for (int i = 0; i < folderButtons.Count; i++)
             {
                 folderButtons[i].Background = (i == selectedFolder)
-                    ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 64))
+                    ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 128, 128))
                     : new SolidColorBrush(System.Windows.Media.Color.FromRgb(61, 61, 61));
                 folderButtons[i].Foreground = (i == selectedFolder)
-                    ? new SolidColorBrush(Colors.Black)
+                    ? new SolidColorBrush(Colors.White)
                     : new SolidColorBrush(Colors.White);
             }
         }
 
         private void FolderButton_Click(object sender, RoutedEventArgs e)
         {
-            if (sender is Button btn)
+            if (sender is WpfButton btn)
             {
                 int folderNum = folderButtons.IndexOf(btn);
                 if (folderNum >= 0)
@@ -219,6 +254,14 @@ namespace Lightspeed_wpf
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (FileListView.SelectedItem is FileItem item)
+            {
+                OpenItem(item);
+            }
+        }
+
+        private void IconListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (IconListView.SelectedItem is FileItem item)
             {
                 OpenItem(item);
             }
@@ -238,16 +281,30 @@ namespace Lightspeed_wpf
                 }
                 else
                 {
+                    item.JustOpened = true;
+                    FileListView.Items.Refresh();
+                    IconListView.Items.Refresh();
+                    
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                     {
                         FileName = item.FullPath,
                         UseShellExecute = true
                     });
+
+                    Task.Delay(1000).ContinueWith(_ =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            item.JustOpened = false;
+                            FileListView.Items.Refresh();
+                            IconListView.Items.Refresh();
+                        });
+                    });
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"无法打开: {ex.Message}");
+                WpfMessageBox.Show($"无法打开: {ex.Message}");
             }
         }
 
@@ -284,7 +341,7 @@ namespace Lightspeed_wpf
                 }
             }
 
-            MessageBox.Show("文件夹创建完成！");
+            WpfMessageBox.Show("文件夹创建完成！");
             NavigateToFolder(currentFolder);
         }
 
@@ -306,7 +363,7 @@ namespace Lightspeed_wpf
             }
             else
             {
-                MessageBox.Show("AHK 文件不存在，请先点击「生成 AHK」", "提示");
+                WpfMessageBox.Show("AHK 文件不存在，请先点击「生成 AHK」", "提示");
             }
         }
 
@@ -337,7 +394,7 @@ namespace Lightspeed_wpf
             }
 
             File.WriteAllText(ahkFilePath, sb.ToString());
-            MessageBox.Show($"AHK 已生成: {ahkFilePath}");
+            WpfMessageBox.Show($"AHK 已生成: {ahkFilePath}");
         }
 
         private void BtnOpenInExplorer_Click(object sender, RoutedEventArgs e)
@@ -353,51 +410,74 @@ namespace Lightspeed_wpf
         {
             if (TxtIconSize == null) return;
             
-            iconSize = (int)SliderIconSize.Value;
-            TxtIconSize.Text = ((int)iconSize).ToString();
+            listIconSize = (int)SliderIconSize.Value;
+            TxtIconSize.Text = ((int)listIconSize).ToString();
             NavigateToFolder(currentFolder);
         }
 
-        private void SliderRowSpacing_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void SliderIconSizeIcon_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            if (TxtRowSpacing == null) return;
+            if (TxtIconSizeIcon == null) return;
             
-            rowSpacing = SliderRowSpacing.Value;
-            TxtRowSpacing.Text = ((int)rowSpacing).ToString();
+            iconIconSize = (int)SliderIconSizeIcon.Value;
+            TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
             NavigateToFolder(currentFolder);
+        }
+
+        private void BtnListView_Click(object sender, RoutedEventArgs e)
+        {
+            isListView = true;
+            FileListView.Visibility = Visibility.Visible;
+            IconListView.Visibility = Visibility.Collapsed;
+            BtnListView.IsChecked = true;
+            BtnIconView.IsChecked = false;
+        }
+
+        private void BtnIconView_Click(object sender, RoutedEventArgs e)
+        {
+            isListView = false;
+            FileListView.Visibility = Visibility.Collapsed;
+            IconListView.Visibility = Visibility.Visible;
+            BtnListView.IsChecked = false;
+            BtnIconView.IsChecked = true;
         }
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
         {
             if (FileListView.SelectedItem is FileItem item)
             {
-                ContextMenu menu = new ContextMenu();
-
-                MenuItem openItem = new MenuItem { Header = "打开" };
-                openItem.Click += (s, args) => OpenItem(item);
-                menu.Items.Add(openItem);
-
-                if (item.IsDirectory)
-                {
-                    MenuItem openFolderItem = new MenuItem { Header = "在文件资源管理器中打开" };
-                    openFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
-                    menu.Items.Add(openFolderItem);
-                }
-                else
-                {
-                    MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
-                    openWithItem.Click += (s, args) => OpenWith(item.FullPath);
-                    menu.Items.Add(openWithItem);
-                }
-
-                menu.Items.Add(new Separator());
-
-                MenuItem copyItem = new MenuItem { Header = "复制路径" };
-                copyItem.Click += (s, args) => Clipboard.SetText(item.FullPath);
-                menu.Items.Add(copyItem);
-
-                menu.IsOpen = true;
+                ShowContextMenu(item);
             }
+        }
+
+        private void ShowContextMenu(FileItem item)
+        {
+            ContextMenu menu = new ContextMenu();
+
+            MenuItem openItem = new MenuItem { Header = "打开" };
+            openItem.Click += (s, args) => OpenItem(item);
+            menu.Items.Add(openItem);
+
+            if (item.IsDirectory)
+            {
+                MenuItem openFolderItem = new MenuItem { Header = "在文件资源管理器中打开" };
+                openFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
+                menu.Items.Add(openFolderItem);
+            }
+            else
+            {
+                MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
+                openWithItem.Click += (s, args) => OpenWith(item.FullPath);
+                menu.Items.Add(openWithItem);
+            }
+
+            menu.Items.Add(new Separator());
+
+            MenuItem copyItem = new MenuItem { Header = "复制路径" };
+            copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
+            menu.Items.Add(copyItem);
+
+            menu.IsOpen = true;
         }
 
         private void OpenInExplorer(string path)
@@ -440,6 +520,25 @@ namespace Lightspeed_wpf
         {
             Close();
         }
+
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Minimized && notifyIcon != null)
+            {
+                Hide();
+                notifyIcon.Visible = true;
+                notifyIcon.ShowBalloonTip(1000, "Lightspeed", "程序已最小化到托盘", Forms.ToolTipIcon.Info);
+            }
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (notifyIcon != null)
+            {
+                notifyIcon.Visible = false;
+                notifyIcon.Dispose();
+            }
+        }
     }
 
     public class FileItem
@@ -448,7 +547,7 @@ namespace Lightspeed_wpf
         public string FullPath { get; set; } = "";
         public bool IsDirectory { get; set; }
         public ImageSource? Icon { get; set; }
-        public double IconSize { get; set; } = 32;
-        public Thickness RowMargin { get; set; } = new Thickness(0);
+        public double IconSize { get; set; } = 48;
+        public bool JustOpened { get; set; }
     }
 }

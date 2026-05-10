@@ -8,7 +8,9 @@
         AllowsTransparency="True"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResizeWithGrip"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        StateChanged="Window_StateChanged"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        Closing="Window_Closing">
 
     <Window.Resources>
         <Style x:Key="FolderButtonStyle" TargetType="Button">
@@ -37,8 +39,8 @@
         </Style>
 
         <Style x:Key="SideButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Height" Value="37"/>
+            <Setter Property="Margin" Value="2,2"/>
             <Setter Property="Padding" Value="15,0"/>
             <Setter Property="Background" Value="#3D3D3D"/>
             <Setter Property="Foreground" Value="White"/>
@@ -115,6 +117,33 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="ViewToggleButtonStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Margin" Value="0,3,5,3"/>
+            <Setter Property="Background" Value="#3D3D3D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#5D5D5D"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="#569CD3"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style TargetType="ListViewItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
@@ -134,23 +163,98 @@
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#2D2D2D"/>
                 </Trigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#3D3D3D"/>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderThickness="0" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2D2D2D"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
+        <Style TargetType="ListViewItem" x:Key="FileListViewItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderThickness="0" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2D2D2D"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding JustOpened}" Value="True">
+                    <Setter Property="Background" Value="#2E7D32"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ListBoxItem" x:Key="IconListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderThickness="0" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2D2D2D"/>
+                </Trigger>
+                <DataTrigger Binding="{Binding JustOpened}" Value="True">
+                    <Setter Property="Background" Value="#2E7D32"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#1E1E1E"/>
-            <Setter Property="Width" Value="10"/>
+            <Setter Property="Background" Value="#2D2D2D"/>
+            <Setter Property="Width" Value="12"/>
+        </Style>
+
+        <Style TargetType="Thumb" x:Key="ScrollBarThumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="#4D4D4D" CornerRadius="4"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="ScrollViewer">
             <Setter Property="Background" Value="#1E1E1E"/>
-        </Style>
-
-        <Style TargetType="Rectangle">
-            <Setter Property="Fill" Value="#3D3D3D"/>
         </Style>
     </Window.Resources>
 
@@ -171,9 +275,9 @@
             <TextBlock Grid.Column="0" Text="Lightspeed" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Bold"/>
             
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Content="_" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
-                <Button Content="[]" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
-                <Button Content="X" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
+                <Button Content="⚊" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
+                <Button Content="🔳" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
+                <Button Content="✖" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
             </StackPanel>
         </Grid>
 
@@ -199,47 +303,58 @@
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       MouseDoubleClick="FileListView_MouseDoubleClick"
-                      MouseRightButtonDown="FileListView_MouseRightClick">
+                      MouseRightButtonDown="FileListView_MouseRightClick"
+                      Visibility="Visible">
                 <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="Padding" Value="5"/>
-                        <Setter Property="Margin" Value="0"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListViewItem">
-                                    <Border Background="{TemplateBinding Background}" 
-                                            BorderThickness="0" 
-                                            Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter/>
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#2D2D2D"/>
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#3D3D3D"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
+                    <Style TargetType="ListViewItem" BasedOn="{StaticResource FileListViewItem}"/>
                 </ListView.ItemContainerStyle>
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                        <Grid Margin="{Binding RowMargin}">
+                        <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Image Grid.Column="0" Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,10,0"/>
+                            <Image Grid.Column="0" Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White"/>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
+
+            <ListBox x:Name="IconListView" 
+                      Background="#1E1E1E" 
+                      Foreground="White"
+                      BorderThickness="0"
+                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                      MouseDoubleClick="IconListView_MouseDoubleClick"
+                      Visibility="Collapsed">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem" BasedOn="{StaticResource IconListBoxItem}">
+                        <Setter Property="Width" Value="90"/>
+                        <Setter Property="Height" Value="100"/>
+                        <Setter Property="Margin" Value="3"/>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel HorizontalAlignment="Center">
+                            <Image Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,0,5" RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="{Binding Name}" 
+                                       TextWrapping="Wrap" 
+                                       TextAlignment="Center" 
+                                       Foreground="White"
+                                       MaxWidth="80"
+                                       FontSize="11"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <Border x:Name="SettingsPanel" 
                     Background="#2D2D2D" 
@@ -250,37 +365,37 @@
                         <TextBlock Text="设置" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
                         <TextBlock Text="AHK 功能" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <Button Content="📁 创建文件夹" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click"/>
-                        <Button Content="⚙ 生成 AHK 脚本" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
-                        <Button Content="▶ 启动 AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
-                        <Button Content="🚀 生成 + 启动" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
+                        <Button Content="Create Folders" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click"/>
+                        <Button Content="Generate AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
+                        <Button Content="Start AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
+                        <Button Content="Generate + Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
                         
-                        <CheckBox x:Name="ChkAutoStartAHK" Content="AHK 自启动" Foreground="White" Margin="0,10,0,5"/>
+                        <CheckBox x:Name="ChkAutoStartAHK" Content="AHK Auto Start" Foreground="White" Margin="0,10,0,5"/>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
-                        <TextBlock Text="文件夹操作" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <Button Content="📂 在资源管理器中打开" Style="{StaticResource SettingsButtonStyle}" Click="BtnOpenInExplorer_Click"/>
+                        <TextBlock Text="Folder Operations" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <Button Content="Open in Explorer" Style="{StaticResource SettingsButtonStyle}" Click="BtnOpenInExplorer_Click"/>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
-                        <TextBlock Text="显示设置" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="Display Settings" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         
-                        <TextBlock Text="图标大小" Foreground="White" Margin="0,5"/>
+                        <TextBlock Text="Icon Size (List Mode)" Foreground="White" Margin="0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <Slider x:Name="SliderIconSize" Width="200" Minimum="16" Maximum="64" Value="32" ValueChanged="SliderIconSize_ValueChanged"/>
                             <TextBlock x:Name="TxtIconSize" Text="32" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <TextBlock Text="行间距" Foreground="White" Margin="0,10,0,5"/>
+                        <TextBlock Text="Icon Size (Icon Mode)" Foreground="White" Margin="0,10,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="SliderRowSpacing" Width="200" Minimum="0" Maximum="20" Value="0" ValueChanged="SliderRowSpacing_ValueChanged"/>
-                            <TextBlock x:Name="TxtRowSpacing" Text="0" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <Slider x:Name="SliderIconSizeIcon" Width="200" Minimum="32" Maximum="128" Value="64" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
+                            <TextBlock x:Name="TxtIconSizeIcon" Text="64" Foreground="White" Margin="10,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
-                        <TextBlock Text="帮助链接" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="Help Links" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <TextBlock Text="GitHub: https://github.com/kasus/lightspeed-UI" Foreground="#6B9FFF" Margin="0,5"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -288,10 +403,23 @@
         </Grid>
 
         <Border Grid.Row="3" Background="#252525" Padding="10">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="🔄 刷新" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
-                <Button Content="⚙ 设置" Style="{StaticResource SideButtonStyle}" Click="BtnSettings_Click"/>
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <Button Content="📁" Style="{StaticResource SideButtonStyle}" Click="BtnOpenInExplorer_Click" />
+                    <Button Content="♻" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
+                </StackPanel>
+                
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <ToggleButton x:Name="BtnListView" Content="List" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
+                    <ToggleButton x:Name="BtnIconView" Content="Icon" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
+                    <Button Content="Setting" Style="{StaticResource SideButtonStyle}" Click="BtnSettings_Click"/>
+                </StackPanel>
+            </Grid>
         </Border>
     </Grid>
 </Window>
