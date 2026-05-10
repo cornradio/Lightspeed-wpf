@@ -22,20 +22,25 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" BorderThickness="2" BorderBrush="Transparent">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#569CD3"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#4D4D4D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#5D5D5D"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="SideButtonStyle" TargetType="Button">
@@ -370,7 +375,7 @@
                         <Button Content="Start AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
                         <Button Content="Generate + Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
                         
-                        <CheckBox x:Name="ChkAutoStartAHK" Content="AHK Auto Start" Foreground="White" Margin="0,10,0,5"/>
+                        <CheckBox x:Name="ChkAutoStartAHK" Content="AHK Auto Start" Foreground="White" Margin="0,10,0,5" Checked="ChkAutoStartAHK_Changed" Unchecked="ChkAutoStartAHK_Changed"/>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
@@ -412,6 +417,7 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <Button Content="📁" Style="{StaticResource SideButtonStyle}" Click="BtnOpenInExplorer_Click" />
                     <Button Content="♻" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
+                    <Button Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="Generate and Start AHK (No Dialog)"/>
                 </StackPanel>
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">

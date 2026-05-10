@@ -75,6 +75,7 @@ namespace Lightspeed_wpf
         {
             InitializeComponent();
             InitializeFolderButtons();
+            InitializeSettings();
             InitializeTrayIcon();
             Loaded += MainWindow_Loaded;
         }
@@ -91,6 +92,25 @@ namespace Lightspeed_wpf
             folderButtons.Add(Btn7);
             folderButtons.Add(Btn8);
             folderButtons.Add(Btn9);
+        }
+
+        private void InitializeSettings()
+        {
+            ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
+            
+            if (AppSettings.Instance.AutoStartAHK)
+            {
+                CreateAHK(basePath);
+                string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
+                if (File.Exists(ahkPath))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = ahkPath,
+                        UseShellExecute = true
+                    });
+                }
+            }
         }
 
         private void InitializeTrayIcon()
@@ -352,10 +372,19 @@ namespace Lightspeed_wpf
             {
                 if (item.IsDirectory)
                 {
+                    string folderName = Path.GetFileName(item.FullPath);
                     int folderNum;
-                    if (int.TryParse(Path.GetFileName(item.FullPath), out folderNum))
+                    if (int.TryParse(folderName, out folderNum))
                     {
                         NavigateToFolder(folderNum);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = item.FullPath,
+                            UseShellExecute = true
+                        });
                     }
                 }
                 else
@@ -451,6 +480,26 @@ namespace Lightspeed_wpf
         {
             CreateAHK(basePath);
             BtnStartAHK_Click(sender, e);
+        }
+
+        private void BtnQuickStartAHK_Click(object sender, RoutedEventArgs e)
+        {
+            CreateAHK(basePath);
+            string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
+            if (File.Exists(ahkPath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = ahkPath,
+                    UseShellExecute = true
+                });
+            }
+        }
+
+        private void ChkAutoStartAHK_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.AutoStartAHK = ChkAutoStartAHK.IsChecked ?? false;
+            AppSettings.Instance.Save();
         }
 
         public void CreateAHK(string folderPath)
@@ -726,7 +775,14 @@ return
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            Close();
+            if (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift))
+            {
+                ForceClose();
+            }
+            else
+            {
+                Close();
+            }
         }
 
         private void Window_StateChanged(object sender, EventArgs e)
