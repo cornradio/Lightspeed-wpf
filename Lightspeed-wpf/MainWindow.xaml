@@ -414,8 +414,8 @@
 
                         <TextBlock Text="Help Links" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <TextBlock Margin="0,5">
-                            <Hyperlink NavigateUri="https://github.com/cornradio/lightspeed-UI" RequestNavigate="Hyperlink_RequestNavigate">
-                                <TextBlock Text="https://github.com/cornradio/lightspeed-UI" Foreground="#6B9FFF"/>
+                            <Hyperlink NavigateUri="https://lightspeed.cornradio.org/" RequestNavigate="Hyperlink_RequestNavigate">
+                                <TextBlock Text="https://lightspeed.cornradio.org/" Foreground="#6B9FFF"/>
                             </Hyperlink>
                         </TextBlock>
                     </StackPanel>
