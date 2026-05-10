@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Forms = System.Windows.Forms;
@@ -16,6 +17,18 @@ namespace Lightspeed_wpf
 {
     public partial class MainWindow : Window
     {
+        private const int HOTKEY_ID = 9000;
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_SHIFT = 0x0004;
+        private const uint VK_S = 0x53;
+
+        [DllImport("user32.dll")]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll")]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
         private List<WpfButton> folderButtons = new List<WpfButton>();
         private int currentFolder = 0;
         private string basePath = @"C:\lightspeed";
@@ -23,6 +36,11 @@ namespace Lightspeed_wpf
         private double iconIconSize = 64;
         private Forms.NotifyIcon? notifyIcon;
         private bool isListView = true;
+        private IntPtr windowHandle;
+        private HwndSource? source;
+
+        private uint currentModifiers = MOD_ALT;
+        private uint currentKey = VK_S;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -88,6 +106,23 @@ namespace Lightspeed_wpf
             notifyIcon.Text = "Lightspeed";
             notifyIcon.Visible = false;
             notifyIcon.DoubleClick += (s, e) => ShowFromTray();
+
+            var contextMenu = new Forms.ContextMenuStrip();
+            var showItem = new Forms.ToolStripMenuItem("显示窗口");
+            showItem.Click += (s, e) => ShowFromTray();
+            contextMenu.Items.Add(showItem);
+
+            var hotkeyItem = new Forms.ToolStripMenuItem($"快捷键: Alt+S");
+            hotkeyItem.Enabled = false;
+            contextMenu.Items.Add(hotkeyItem);
+
+            contextMenu.Items.Add(new Forms.ToolStripSeparator());
+
+            var quitItem = new Forms.ToolStripMenuItem("退出");
+            quitItem.Click += (s, e) => ForceClose();
+            contextMenu.Items.Add(quitItem);
+
+            notifyIcon.ContextMenuStrip = contextMenu;
         }
 
         private void ShowFromTray()
@@ -100,11 +135,51 @@ namespace Lightspeed_wpf
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            windowHandle = new WindowInteropHelper(this).Handle;
+            source = HwndSource.FromHwnd(windowHandle);
+            source?.AddHook(HwndHook);
+
+            RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
+
             if (!Directory.Exists(basePath))
             {
                 Directory.CreateDirectory(basePath);
             }
             NavigateToFolder(0);
+        }
+
+        private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_HOTKEY = 0x0312;
+            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+            {
+                ToggleWindowVisibility();
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private void ToggleWindowVisibility()
+        {
+            if (Visibility == Visibility.Visible)
+            {
+                Hide();
+                if (notifyIcon != null)
+                {
+                    notifyIcon.Visible = true;
+                    notifyIcon.ShowBalloonTip(500, "Lightspeed", "已隐藏到托盘，按 Alt+S 显示", Forms.ToolTipIcon.Info);
+                }
+            }
+            else
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+                if (notifyIcon != null)
+                {
+                    notifyIcon.Visible = false;
+                }
+            }
         }
 
         private void NavigateToFolder(int folderNum)
@@ -533,11 +608,25 @@ namespace Lightspeed_wpf
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            e.Cancel = true;
+            Hide();
+            if (notifyIcon != null)
+            {
+                notifyIcon.Visible = true;
+                notifyIcon.ShowBalloonTip(500, "Lightspeed", "程序仍在后台运行", Forms.ToolTipIcon.Info);
+            }
+        }
+
+        public void ForceClose()
+        {
+            source?.RemoveHook(HwndHook);
+            UnregisterHotKey(windowHandle, HOTKEY_ID);
             if (notifyIcon != null)
             {
                 notifyIcon.Visible = false;
                 notifyIcon.Dispose();
             }
+            System.Windows.Application.Current.Shutdown();
         }
     }
 
