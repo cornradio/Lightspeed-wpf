@@ -60,7 +60,37 @@ namespace Lightspeed_wpf
         private FileItem? editingItem = null;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern int SHOpenFolderAndSelectItems(IntPtr pidlFolder, uint cidl, IntPtr[] apidl, uint dwFlags);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
+
+        [DllImport("shell32.dll", EntryPoint = "SHParseDisplayName")]
+        private static extern IntPtr SHParseDisplayName([MarshalAs(UnmanagedType.LPWStr)] string pszName, IntPtr pbc, out IntPtr ppidl, uint sfgaoIn, out uint psfgaoOut);
+
+        private const uint FO_DELETE = 0x0003;
+        private const uint FOF_ALLOWUNDO = 0x0040;
+        private const uint FOF_NOCONFIRMATION = 0x0010;
+        private const uint FOF_SILENT = 0x0032;
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct SHFILEOPSTRUCT
+        {
+            public IntPtr hwnd;
+            public uint wFunc;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string pFrom;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string pTo;
+            public ushort fFlags;
+            public bool fAnyOperationsAborted;
+            public IntPtr hNameMappings;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string lpszProgressTitle;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern int SHFileOperation(ref SHFILEOPSTRUCT FileOp);
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
         private struct SHFILEINFO
@@ -1162,26 +1192,24 @@ return
 
         private void DeleteItem(FileItem item)
         {
-            var result = WpfMessageBox.Show($"确定要删除 \"{item.Name}\" 吗?", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result == MessageBoxResult.Yes)
+            try
             {
-                try
-                {
-                    if (item.IsDirectory)
-                    {
-                        Directory.Delete(item.FullPath, true);
-                    }
-                    else
-                    {
-                        File.Delete(item.FullPath);
-                    }
-                    NavigateToFolder(currentFolder);
-                }
-                catch (Exception ex)
-                {
-                    WpfMessageBox.Show($"删除失败: {ex.Message}");
-                }
+                MoveToRecycleBin(item.FullPath);
+                NavigateToFolder(currentFolder);
             }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"删除失败: {ex.Message}");
+            }
+        }
+
+        private void MoveToRecycleBin(string path)
+        {
+            SHFILEOPSTRUCT fs = new SHFILEOPSTRUCT();
+            fs.wFunc = FO_DELETE;
+            fs.pFrom = path + "\0\0";
+            fs.fFlags = (ushort)(FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT);
+            SHFileOperation(ref fs);
         }
 
         private void OpenInExplorer(string path)
@@ -1212,7 +1240,20 @@ return
                 return;
             }
 
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Delete)
+            {
+                if (isListView && FileListView.SelectedItem is FileItem fileItem2)
+                {
+                    DeleteItem(fileItem2);
+                    e.Handled = true;
+                }
+                else if (!isListView && IconListView.SelectedItem is FileItem iconItem2)
+                {
+                    DeleteItem(iconItem2);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Enter)
             {
                 if (isListView && FileListView.SelectedItem is FileItem listItem)
                 {
