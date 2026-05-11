@@ -20,16 +20,27 @@ namespace Lightspeed_wpf
     public partial class MainWindow : Window
     {
         private const int HOTKEY_ID = 9000;
-        private const uint MOD_ALT = 0x0001;
-        private const uint MOD_CONTROL = 0x0002;
-        private const uint MOD_SHIFT = 0x0004;
-        private const uint VK_S = 0x53;
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
         [DllImport("user32.dll")]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left, Top, Right, Bottom;
+        }
 
         private List<WpfButton> folderButtons = new List<WpfButton>();
         private int currentFolder = 0;
@@ -41,8 +52,9 @@ namespace Lightspeed_wpf
         private IntPtr windowHandle;
         private HwndSource? source;
 
-        private uint currentModifiers = MOD_ALT;
-        private uint currentKey = VK_S;
+        private uint currentModifiers = 0x0001;
+        private uint currentKey = 0x53;
+        private bool isCapturingKey = false;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -78,7 +90,6 @@ namespace Lightspeed_wpf
         {
             InitializeComponent();
             InitializeFolderButtons();
-            InitializeSettings();
             InitializeTrayIcon();
             Loaded += MainWindow_Loaded;
         }
@@ -95,25 +106,6 @@ namespace Lightspeed_wpf
             folderButtons.Add(Btn7);
             folderButtons.Add(Btn8);
             folderButtons.Add(Btn9);
-        }
-
-        private void InitializeSettings()
-        {
-            ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
-            
-            if (AppSettings.Instance.AutoStartAHK)
-            {
-                CreateAHK(basePath);
-                string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
-                if (File.Exists(ahkPath))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = ahkPath,
-                        UseShellExecute = true
-                    });
-                }
-            }
         }
 
         private void InitializeTrayIcon()
@@ -166,7 +158,7 @@ namespace Lightspeed_wpf
 
             ImmDisableIME(IntPtr.Zero);
 
-            RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
+            LoadSettings();
 
             if (!Directory.Exists(basePath))
             {
@@ -175,11 +167,92 @@ namespace Lightspeed_wpf
             NavigateToFolder(0);
         }
 
+        private void LoadSettings()
+        {
+            ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
+            ChkHideDesktopIni.IsChecked = AppSettings.Instance.HideDesktopIni;
+            ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
+            
+            listIconSize = AppSettings.Instance.ListIconSize;
+            iconIconSize = AppSettings.Instance.IconIconSize;
+            SliderIconSize.Value = listIconSize;
+            SliderIconSizeIcon.Value = iconIconSize;
+            TxtIconSize.Text = ((int)listIconSize).ToString();
+            TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
+
+            isListView = AppSettings.Instance.IsListView;
+            if (isListView)
+            {
+                FileListView.Visibility = Visibility.Visible;
+                IconListView.Visibility = Visibility.Collapsed;
+                BtnListView.IsChecked = true;
+                BtnIconView.IsChecked = false;
+            }
+            else
+            {
+                FileListView.Visibility = Visibility.Collapsed;
+                IconListView.Visibility = Visibility.Visible;
+                BtnListView.IsChecked = false;
+                BtnIconView.IsChecked = true;
+            }
+
+            currentModifiers = (uint)AppSettings.Instance.HotkeyModifiers;
+            currentKey = (uint)AppSettings.Instance.HotkeyKey;
+            UpdateHotkeyDisplay();
+            
+            RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
+
+            if (AppSettings.Instance.AutoStartAHK)
+            {
+                CreateAHK(basePath);
+                string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
+                if (File.Exists(ahkPath))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = ahkPath,
+                        UseShellExecute = true
+                    });
+                }
+            }
+        }
+
+        private void UpdateHotkeyDisplay()
+        {
+            string modifiers = "";
+            if ((currentModifiers & 0x0001) != 0) modifiers += "Alt+";
+            if ((currentModifiers & 0x0002) != 0) modifiers += "Ctrl+";
+            if ((currentModifiers & 0x0004) != 0) modifiers += "Shift+";
+            string keyName = ((Key)currentKey).ToString();
+            TxtHotkey.Text = modifiers + keyName;
+        }
+
+        private bool IsFullscreenAppRunning()
+        {
+            IntPtr hwnd = GetForegroundWindow();
+            RECT appRect;
+            RECT screenRect;
+            GetWindowRect(hwnd, out appRect);
+            int screenWidth = GetSystemMetrics(0);
+            int screenHeight = GetSystemMetrics(1);
+            screenRect = new RECT { Left = 0, Top = 0, Right = screenWidth, Bottom = screenHeight };
+            int appWidth = appRect.Right - appRect.Left;
+            int appHeight = appRect.Bottom - appRect.Top;
+            int screenArea = screenWidth * screenHeight;
+            int appArea = appWidth * appHeight;
+            return appArea >= screenArea * 0.95;
+        }
+
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             const int WM_HOTKEY = 0x0312;
             if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
             {
+                if (AppSettings.Instance.DisableHotkeyInFullscreen && IsFullscreenAppRunning())
+                {
+                    handled = true;
+                    return IntPtr.Zero;
+                }
                 ToggleWindowVisibility();
                 handled = true;
             }
@@ -237,6 +310,11 @@ namespace Lightspeed_wpf
 
                 foreach (var file in files)
                 {
+                    string fileName = Path.GetFileName(file);
+                    if (AppSettings.Instance.HideDesktopIni && fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
                     var fileItem = CreateFileItem(file, false, false);
                     var iconItem = CreateFileItem(file, false, true);
                     FileListView.Items.Add(fileItem);
@@ -254,17 +332,31 @@ namespace Lightspeed_wpf
         private FileItem CreateFileItem(string path, bool isDirectory, bool isIconMode)
         {
             double size = isIconMode ? iconIconSize : listIconSize;
+            double scaleFactor = GetDpiScaleFactor();
+            double scaledSize = size * scaleFactor;
             return new FileItem
             {
                 Name = Path.GetFileName(path),
                 FullPath = path,
                 IsDirectory = isDirectory,
-                IconSize = size,
-                Icon = GetIcon(path, isDirectory)
+                IconSize = scaledSize,
+                Icon = GetIcon(path, isDirectory, (int)scaledSize)
             };
         }
 
-        private ImageSource GetIcon(string path, bool isDirectory)
+        private double GetDpiScaleFactor()
+        {
+            int dpi = GetDeviceCaps(GetDC(IntPtr.Zero), 88);
+            return dpi / 96.0;
+        }
+
+        [DllImport("gdi32.dll")]
+        private static extern int GetDeviceCaps(IntPtr hdc, int nIndex);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetDC(IntPtr hwnd);
+
+        private ImageSource GetIcon(string path, bool isDirectory, int size)
         {
             SHFILEINFO shfi = new SHFILEINFO();
             uint flags = SHGFI_ICON | SHGFI_LARGEICON;
@@ -276,14 +368,22 @@ namespace Lightspeed_wpf
             {
                 try
                 {
-                    int iconSize = 64;
-                    using (var bitmap = new Bitmap(iconSize, iconSize))
+                    using (var bitmap = new Bitmap(size, size))
                     using (var graphics = Graphics.FromImage(bitmap))
                     {
                         graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                        graphics.DrawIcon(System.Drawing.Icon.FromHandle(shfi.hIcon), 0, 0);
-                        var hBitmap = bitmap.GetHbitmap();
+                        graphics.Clear(System.Drawing.Color.Transparent);
+                        IntPtr iconHandle = shfi.hIcon;
+                        using (var icon = System.Drawing.Icon.FromHandle(iconHandle))
+                        {
+                            int iconSize = Math.Min(icon.Width, icon.Height);
+                            int drawSize = Math.Min(size, Math.Max(iconSize, 16));
+                            int x = (size - drawSize) / 2;
+                            int y = (size - drawSize) / 2;
+                            graphics.DrawIcon(icon, new Rectangle(x, y, drawSize, drawSize));
+                        }
+                        var hBitmap = bitmap.GetHbitmap(System.Drawing.Color.FromArgb(0, 0, 0, 0));
                         try
                         {
                             ImageSource imageSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
@@ -303,13 +403,13 @@ namespace Lightspeed_wpf
                 }
                 catch
                 {
-                    return CreateDefaultIcon(isDirectory);
+                    return CreateDefaultIcon(isDirectory, size);
                 }
             }
-            return CreateDefaultIcon(isDirectory);
+            return CreateDefaultIcon(isDirectory, size);
         }
 
-        private ImageSource CreateDefaultIcon(bool isFolder)
+        private ImageSource CreateDefaultIcon(bool isFolder, int size)
         {
             DrawingVisual drawingVisual = new DrawingVisual();
             using (DrawingContext dc = drawingVisual.RenderOpen())
@@ -325,7 +425,7 @@ namespace Lightspeed_wpf
                 }
             }
 
-            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(24, 24, 96, 96, PixelFormats.Pbgra32);
+            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
             renderBitmap.Render(drawingVisual);
             return renderBitmap;
         }
@@ -509,6 +609,101 @@ namespace Lightspeed_wpf
             AppSettings.Instance.Save();
         }
 
+        private void ChkHideDesktopIni_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.HideDesktopIni = ChkHideDesktopIni.IsChecked ?? false;
+            AppSettings.Instance.Save();
+            NavigateToFolder(currentFolder);
+        }
+
+        private void ChkDisableInFullscreen_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.DisableHotkeyInFullscreen = ChkDisableInFullscreen.IsChecked ?? true;
+            AppSettings.Instance.Save();
+        }
+
+        private void Grid_DragOver(object sender, System.Windows.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+            {
+                e.Effects = System.Windows.DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = System.Windows.DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void Grid_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+            {
+                string[] files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+                string targetFolder = Path.Combine(basePath, currentFolder.ToString());
+                
+                foreach (string file in files)
+                {
+                    try
+                    {
+                        string fileName = Path.GetFileName(file);
+                        string destPath = Path.Combine(targetFolder, fileName);
+                        
+                        if (File.Exists(destPath))
+                        {
+                            File.Delete(destPath);
+                        }
+                        
+                        File.Move(file, destPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        WpfMessageBox.Show($"移动文件失败: {ex.Message}");
+                    }
+                }
+                
+                NavigateToFolder(currentFolder);
+            }
+        }
+
+        private void BtnCaptureHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            isCapturingKey = true;
+            TxtHotkey.Text = "请按任意键...";
+            PreviewKeyDown += CaptureHotkey_KeyDown;
+        }
+
+        private void CaptureHotkey_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            e.Handled = true;
+            PreviewKeyDown -= CaptureHotkey_KeyDown;
+            isCapturingKey = false;
+            
+            uint modifiers = 0;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= 0x0001;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= 0x0002;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= 0x0004;
+            
+            uint keyCode = (uint)e.Key;
+            
+            if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            {
+                keyCode = (uint)(Key.D0 + (e.Key - Key.D0));
+            }
+            
+            currentModifiers = modifiers;
+            currentKey = keyCode;
+            
+            AppSettings.Instance.HotkeyModifiers = (int)modifiers;
+            AppSettings.Instance.HotkeyKey = (int)keyCode;
+            AppSettings.Instance.Save();
+            
+            UnregisterHotKey(windowHandle, HOTKEY_ID);
+            RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
+            
+            UpdateHotkeyDisplay();
+        }
+
         public void CreateAHK(string folderPath)
         {
             string ahkFilePath = Path.Combine(folderPath, "lightspeed.ahk");
@@ -676,6 +871,8 @@ return
             
             listIconSize = (int)SliderIconSize.Value;
             TxtIconSize.Text = ((int)listIconSize).ToString();
+            AppSettings.Instance.ListIconSize = (int)listIconSize;
+            AppSettings.Instance.Save();
             NavigateToFolder(currentFolder);
         }
 
@@ -685,6 +882,8 @@ return
             
             iconIconSize = (int)SliderIconSizeIcon.Value;
             TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
+            AppSettings.Instance.IconIconSize = (int)iconIconSize;
+            AppSettings.Instance.Save();
             NavigateToFolder(currentFolder);
         }
 
@@ -695,6 +894,8 @@ return
             IconListView.Visibility = Visibility.Collapsed;
             BtnListView.IsChecked = true;
             BtnIconView.IsChecked = false;
+            AppSettings.Instance.IsListView = true;
+            AppSettings.Instance.Save();
         }
 
         private void BtnIconView_Click(object sender, RoutedEventArgs e)
@@ -704,6 +905,8 @@ return
             IconListView.Visibility = Visibility.Visible;
             BtnListView.IsChecked = false;
             BtnIconView.IsChecked = true;
+            AppSettings.Instance.IsListView = false;
+            AppSettings.Instance.Save();
         }
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
@@ -737,11 +940,64 @@ return
 
             menu.Items.Add(new Separator());
 
+            MenuItem renameItem = new MenuItem { Header = "重命名" };
+            renameItem.Click += (s, args) => RenameItem(item);
+            menu.Items.Add(renameItem);
+
+            MenuItem deleteItem = new MenuItem { Header = "删除" };
+            deleteItem.Click += (s, args) => DeleteItem(item);
+            menu.Items.Add(deleteItem);
+
+            menu.Items.Add(new Separator());
+
             MenuItem copyItem = new MenuItem { Header = "复制路径" };
             copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
             menu.Items.Add(copyItem);
 
             menu.IsOpen = true;
+        }
+
+        private void RenameItem(FileItem item)
+        {
+            var inputDialog = new InputDialog("重命名", "请输入新名称:", item.Name);
+            if (inputDialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(inputDialog.ResponseText))
+            {
+                try
+                {
+                    string dir = Path.GetDirectoryName(item.FullPath);
+                    string newPath = Path.Combine(dir, inputDialog.ResponseText);
+                    File.Move(item.FullPath, newPath);
+                    NavigateToFolder(currentFolder);
+                }
+                catch (Exception ex)
+                {
+                    WpfMessageBox.Show($"重命名失败: {ex.Message}");
+                }
+            }
+        }
+
+        private void DeleteItem(FileItem item)
+        {
+            var result = WpfMessageBox.Show($"确定要删除 \"{item.Name}\" 吗?", "确认删除", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    if (item.IsDirectory)
+                    {
+                        Directory.Delete(item.FullPath, true);
+                    }
+                    else
+                    {
+                        File.Delete(item.FullPath);
+                    }
+                    NavigateToFolder(currentFolder);
+                }
+                catch (Exception ex)
+                {
+                    WpfMessageBox.Show($"删除失败: {ex.Message}");
+                }
+            }
         }
 
         private void OpenInExplorer(string path)
@@ -761,7 +1017,25 @@ return
 
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (e.Key >= Key.A && e.Key <= Key.Z)
+            if (isCapturingKey)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            if (e.Key == Key.OemComma)
+            {
+                int prevFolder = currentFolder > 0 ? currentFolder - 1 : 9;
+                NavigateToFolder(prevFolder);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.OemPeriod)
+            {
+                int nextFolder = currentFolder < 9 ? currentFolder + 1 : 0;
+                NavigateToFolder(nextFolder);
+                e.Handled = true;
+            }
+            else if (e.Key >= Key.A && e.Key <= Key.Z)
             {
                 char searchChar = (char)('a' + (e.Key - Key.A));
                 SelectNextItemByChar(searchChar);

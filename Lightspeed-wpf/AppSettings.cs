@@ -9,6 +9,13 @@ namespace Lightspeed_wpf
         private static readonly string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
         public bool AutoStartAHK { get; set; } = false;
+        public bool HideDesktopIni { get; set; } = false;
+        public bool IsListView { get; set; } = true;
+        public int HotkeyModifiers { get; set; } = 1;
+        public int HotkeyKey { get; set; } = 0x53;
+        public bool DisableHotkeyInFullscreen { get; set; } = true;
+        public int ListIconSize { get; set; } = 30;
+        public int IconIconSize { get; set; } = 60;
 
         private static AppSettings? _instance;
         public static AppSettings Instance
