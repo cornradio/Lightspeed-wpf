@@ -458,6 +458,7 @@
 
                         <TextBlock Text="Display Settings" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <CheckBox x:Name="ChkHideDesktopIni" Content="隐藏 desktop.ini 文件" Foreground="White" Margin="0,5" Checked="ChkHideDesktopIni_Changed" Unchecked="ChkHideDesktopIni_Changed"/>
+                        <CheckBox x:Name="ChkHideExtensions" Content="隐藏文件扩展名" Foreground="White" Margin="0,5" Checked="ChkHideExtensions_Changed" Unchecked="ChkHideExtensions_Changed"/>
                         
                         <TextBlock Text="Icon Size (List Mode)" Foreground="White" Margin="0,15,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">

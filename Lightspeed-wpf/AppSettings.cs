@@ -10,6 +10,7 @@ namespace Lightspeed_wpf
 
         public bool AutoStartAHK { get; set; } = false;
         public bool HideDesktopIni { get; set; } = false;
+        public bool HideExtensions { get; set; } = false;
         public bool IsListView { get; set; } = true;
         public int HotkeyModifiers { get; set; } = 1;
         public int HotkeyKey { get; set; } = 0x53;

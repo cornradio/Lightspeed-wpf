@@ -174,6 +174,7 @@ namespace Lightspeed_wpf
         {
             ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
             ChkHideDesktopIni.IsChecked = AppSettings.Instance.HideDesktopIni;
+            ChkHideExtensions.IsChecked = AppSettings.Instance.HideExtensions;
             ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
             
             listIconSize = AppSettings.Instance.ListIconSize;
@@ -361,9 +362,15 @@ namespace Lightspeed_wpf
             double size = isIconMode ? iconIconSize : listIconSize;
             double scaleFactor = GetDpiScaleFactor();
             double scaledSize = size * scaleFactor;
+            string fileName = Path.GetFileName(path);
+            if (AppSettings.Instance.HideExtensions && !isDirectory && fileName.Contains('.'))
+            {
+                int dotIndex = fileName.LastIndexOf('.');
+                fileName = fileName.Substring(0, dotIndex);
+            }
             return new FileItem
             {
-                Name = Path.GetFileName(path),
+                Name = fileName,
                 FullPath = path,
                 IsDirectory = isDirectory,
                 IconSize = scaledSize,
@@ -639,6 +646,13 @@ namespace Lightspeed_wpf
         private void ChkHideDesktopIni_Changed(object sender, RoutedEventArgs e)
         {
             AppSettings.Instance.HideDesktopIni = ChkHideDesktopIni.IsChecked ?? false;
+            AppSettings.Instance.Save();
+            NavigateToFolder(currentFolder);
+        }
+
+        private void ChkHideExtensions_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.HideExtensions = ChkHideExtensions.IsChecked ?? false;
             AppSettings.Instance.Save();
             NavigateToFolder(currentFolder);
         }
@@ -1112,6 +1126,12 @@ return
             try
             {
                 string dir = Path.GetDirectoryName(item.FullPath) ?? "";
+                string originalName = Path.GetFileName(item.FullPath);
+                if (AppSettings.Instance.HideExtensions && !item.IsDirectory && originalName.Contains('.'))
+                {
+                    string extension = originalName.Substring(originalName.LastIndexOf('.'));
+                    newName = newName + extension;
+                }
                 string newPath = Path.Combine(dir, newName);
                 File.Move(item.FullPath, newPath);
                 NavigateToFolder(currentFolder);
