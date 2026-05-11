@@ -635,13 +635,13 @@
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🎨</div>
-                <h3>两种模式</h3>
+                <h3>两种视图</h3>
                 <p>应用提供 list 和 icon 两种展示模式，icon适合以视觉为主的图标展示，list适合以文字为主的文件管理。</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🖥️</div>
-                <h3>Web 预览</h3>
-                <p>内置 WebBrowser 组件，可直接预览文件夹内容，支持快捷键导航浏览。</p>
+                <h3>快捷键大师</h3>
+                <p>几乎可以完全使用快捷键来完成程序内的所有操作，比如 < > 来切换文件夹，F2 重命名，Delete 删除，Enter 打开</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">🔧</div>
@@ -673,14 +673,30 @@
                 </div>
             </div>
             <div class="shortcut-item">
-                <span>打开文件夹</span>
+                <span>切换文件夹</span>
+                <div class="shortcut-keys">
+                    <span class="key"><</span>
+                    <span class="key">></span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>移动选择</span>
+                <div class="shortcut-keys">
+                    <span class="key">↑</span>
+                    <span class="key">↓</span>
+                    <span class="key">←</span>
+                    <span class="key">→</span>
+                </div>
+            </div>
+            <div class="shortcut-item">
+                <span>打开文件夹（全局AHK）</span>
                 <div class="shortcut-keys">
                     <span class="key">Alt</span>
                     <span class="key">0-9</span>
                 </div>
             </div>
             <div class="shortcut-item">
-                <span>启动应用</span>
+                <span>启动应用（全局AHK）</span>
                 <div class="shortcut-keys">
                     <span class="key">0-9</span>
                     <span class="key">首字母</span>
@@ -690,7 +706,7 @@
         <div class="usage-tip">
             <h4>💡 使用提示</h4>
             <ul>
-                <li>使用前需点击桌面或任务栏，再按下快捷键，这样可以避免在游戏过程中误触</li>
+                <li>使用（全局AHK快递键）前需点击桌面或任务栏，再按下快捷键，这样可以避免在游戏过程中误触</li>
                 <li>例如：在文件夹 1 中有 VSCode，按 1 后再按 V 即可启动</li>
                 <li>例如：按下 Alt + 1 可以打开文件夹 C:\lightspeed\1</li>
                 <li>可以点击闪电按钮或者重启应用时自动刷新 ahk 脚本,比如你添加了一个新的程序但是使用快捷键却无法启动你需要点击一下闪电按钮.</li>

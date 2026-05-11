@@ -1163,7 +1163,14 @@ return
                     newName = newName + extension;
                 }
                 string newPath = Path.Combine(dir, newName);
-                File.Move(item.FullPath, newPath);
+                if (item.IsDirectory)
+                {
+                    Directory.Move(item.FullPath, newPath);
+                }
+                else
+                {
+                    File.Move(item.FullPath, newPath);
+                }
                 NavigateToFolder(currentFolder);
             }
             catch (Exception ex)
@@ -1196,6 +1203,21 @@ return
             {
                 MoveToRecycleBin(item.FullPath);
                 NavigateToFolder(currentFolder);
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    var items = isListView ? FileListView.Items : IconListView.Items;
+                    if (items.Count > 0)
+                    {
+                        if (isListView)
+                        {
+                            FileListView.SelectedItem = items[0];
+                        }
+                        else
+                        {
+                            IconListView.SelectedItem = items[0];
+                        }
+                    }
+                }), System.Windows.Threading.DispatcherPriority.Loaded);
             }
             catch (Exception ex)
             {
@@ -1283,7 +1305,7 @@ return
             {
                 if (isListView && FileListView.Items.Count > 0)
                 {
-                    if (FileListView.SelectedItem == null)
+                    if (FileListView.SelectedItem == null || !FileListView.Items.Contains(FileListView.SelectedItem))
                     {
                         FileListView.SelectedItem = FileListView.Items[0];
                         FileListView.ScrollIntoView(FileListView.SelectedItem);
@@ -1291,7 +1313,7 @@ return
                 }
                 else if (!isListView && IconListView.Items.Count > 0)
                 {
-                    if (IconListView.SelectedItem == null)
+                    if (IconListView.SelectedItem == null || !IconListView.Items.Contains(IconListView.SelectedItem))
                     {
                         IconListView.SelectedItem = IconListView.Items[0];
                         IconListView.ScrollIntoView(IconListView.SelectedItem);
