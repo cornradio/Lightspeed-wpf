@@ -495,17 +495,6 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void IconListView_MouseRightClick(object sender, MouseButtonEventArgs e)
-        {
-            var item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItem;
-            if (item != null)
-            {
-                IconListView.SelectedItem = item;
-                ShowContextMenu(item);
-            }
-            e.Handled = true;
-        }
-
         private void OpenItem(FileItem item)
         {
             try
@@ -969,18 +958,33 @@ return
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
         {
-            var item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItem;
+            var element = e.OriginalSource as FrameworkElement;
+            var item = element?.DataContext as FileItem;
             if (item != null)
             {
                 FileListView.SelectedItem = item;
-                ShowContextMenu(item);
+                ShowContextMenu(item, FileListView);
             }
             e.Handled = true;
         }
 
-        private void ShowContextMenu(FileItem item)
+        private void IconListView_MouseRightClick(object sender, MouseButtonEventArgs e)
+        {
+            var element = e.OriginalSource as FrameworkElement;
+            var item = element?.DataContext as FileItem;
+            if (item != null)
+            {
+                IconListView.SelectedItem = item;
+                ShowContextMenu(item, IconListView);
+            }
+            e.Handled = true;
+        }
+
+        private void ShowContextMenu(FileItem item, FrameworkElement target)
         {
             ContextMenu menu = new ContextMenu();
+            menu.PlacementTarget = target;
+            menu.Placement = PlacementMode.Mouse;
 
             MenuItem openItem = new MenuItem { Header = "打开" };
             openItem.Click += (s, args) => OpenItem(item);

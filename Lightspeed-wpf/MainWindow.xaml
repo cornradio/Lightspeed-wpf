@@ -315,7 +315,7 @@
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       MouseDoubleClick="FileListView_MouseDoubleClick"
-                      MouseRightButtonDown="FileListView_MouseRightClick"
+                      PreviewMouseRightButtonDown="FileListView_MouseRightClick"
                       Visibility="Visible">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem" BasedOn="{StaticResource FileListViewItem}"/>
@@ -340,7 +340,7 @@
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       MouseDoubleClick="IconListView_MouseDoubleClick"
-                      MouseRightButtonDown="IconListView_MouseRightClick"
+                      PreviewMouseRightButtonDown="IconListView_MouseRightClick"
                       Visibility="Collapsed">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>
