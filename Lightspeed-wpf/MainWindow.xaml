@@ -340,6 +340,7 @@
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       MouseDoubleClick="IconListView_MouseDoubleClick"
+                      MouseRightButtonDown="IconListView_MouseRightClick"
                       Visibility="Collapsed">
                 <ListBox.ItemsPanel>
                     <ItemsPanelTemplate>

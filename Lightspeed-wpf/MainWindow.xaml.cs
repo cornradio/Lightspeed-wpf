@@ -223,8 +223,32 @@ namespace Lightspeed_wpf
             if ((currentModifiers & 0x0001) != 0) modifiers += "Alt+";
             if ((currentModifiers & 0x0002) != 0) modifiers += "Ctrl+";
             if ((currentModifiers & 0x0004) != 0) modifiers += "Shift+";
-            string keyName = ((Key)currentKey).ToString();
+            
+            string keyName = GetKeyDisplayName((Key)currentKey);
             TxtHotkey.Text = modifiers + keyName;
+        }
+
+        private string GetKeyDisplayName(Key key)
+        {
+            return key switch
+            {
+                Key.A => "A", Key.B => "B", Key.C => "C", Key.D => "D", Key.E => "E",
+                Key.F => "F", Key.G => "G", Key.H => "H", Key.I => "I", Key.J => "J",
+                Key.K => "K", Key.L => "L", Key.M => "M", Key.N => "N", Key.O => "O",
+                Key.P => "P", Key.Q => "Q", Key.R => "R", Key.S => "S", Key.T => "T",
+                Key.U => "U", Key.V => "V", Key.W => "W", Key.X => "X", Key.Y => "Y",
+                Key.Z => "Z",
+                Key.D0 => "0", Key.D1 => "1", Key.D2 => "2", Key.D3 => "3", Key.D4 => "4",
+                Key.D5 => "5", Key.D6 => "6", Key.D7 => "7", Key.D8 => "8", Key.D9 => "9",
+                Key.Space => "Space", Key.Tab => "Tab", Key.Escape => "Esc",
+                Key.Enter => "Enter", Key.Back => "Back",
+                Key.Home => "Home", Key.End => "End", Key.Insert => "Insert", Key.Delete => "Delete",
+                Key.Up => "Up", Key.Down => "Down", Key.Left => "Left", Key.Right => "Right",
+                Key.F1 => "F1", Key.F2 => "F2", Key.F3 => "F3", Key.F4 => "F4",
+                Key.F5 => "F5", Key.F6 => "F6", Key.F7 => "F7", Key.F8 => "F8",
+                Key.F9 => "F9", Key.F10 => "F10", Key.F11 => "F11", Key.F12 => "F12",
+                _ => key.ToString()
+            };
         }
 
         private bool IsFullscreenAppRunning()
@@ -471,6 +495,17 @@ namespace Lightspeed_wpf
             }
         }
 
+        private void IconListView_MouseRightClick(object sender, MouseButtonEventArgs e)
+        {
+            var item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItem;
+            if (item != null)
+            {
+                IconListView.SelectedItem = item;
+                ShowContextMenu(item);
+            }
+            e.Handled = true;
+        }
+
         private void OpenItem(FileItem item)
         {
             try
@@ -679,23 +714,46 @@ namespace Lightspeed_wpf
             PreviewKeyDown -= CaptureHotkey_KeyDown;
             isCapturingKey = false;
             
+            if (e.Key == Key.Escape)
+            {
+                UpdateHotkeyDisplay();
+                return;
+            }
+            
+            Key key = e.Key;
+            if (key == Key.System)
+            {
+                key = e.SystemKey;
+            }
+            
+            if (key == Key.LWin || key == Key.RWin || key == Key.LeftShift || key == Key.RightShift ||
+                key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt)
+            {
+                TxtHotkey.Text = "请按一个非修饰键";
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    isCapturingKey = true;
+                    PreviewKeyDown += CaptureHotkey_KeyDown;
+                }), System.Windows.Threading.DispatcherPriority.Input);
+                return;
+            }
+            
             uint modifiers = 0;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= 0x0001;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= 0x0002;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= 0x0004;
             
-            uint keyCode = (uint)e.Key;
-            
-            if (e.Key >= Key.D0 && e.Key <= Key.D9)
+            if (modifiers == 0)
             {
-                keyCode = (uint)(Key.D0 + (e.Key - Key.D0));
+                modifiers = 0x0001;
+                key = Key.S;
             }
             
             currentModifiers = modifiers;
-            currentKey = keyCode;
+            currentKey = (uint)key;
             
             AppSettings.Instance.HotkeyModifiers = (int)modifiers;
-            AppSettings.Instance.HotkeyKey = (int)keyCode;
+            AppSettings.Instance.HotkeyKey = (int)key;
             AppSettings.Instance.Save();
             
             UnregisterHotKey(windowHandle, HOTKEY_ID);
@@ -911,10 +969,13 @@ return
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
         {
-            if (FileListView.SelectedItem is FileItem item)
+            var item = (e.OriginalSource as FrameworkElement)?.DataContext as FileItem;
+            if (item != null)
             {
+                FileListView.SelectedItem = item;
                 ShowContextMenu(item);
             }
+            e.Handled = true;
         }
 
         private void ShowContextMenu(FileItem item)
@@ -1023,7 +1084,39 @@ return
                 return;
             }
 
-            if (e.Key == Key.OemComma)
+            if (e.Key == Key.Enter)
+            {
+                if (isListView && FileListView.SelectedItem is FileItem listItem)
+                {
+                    OpenItem(listItem);
+                    e.Handled = true;
+                }
+                else if (!isListView && IconListView.SelectedItem is FileItem iconItem)
+                {
+                    OpenItem(iconItem);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Left || e.Key == Key.Right)
+            {
+                if (isListView && FileListView.Items.Count > 0)
+                {
+                    if (FileListView.SelectedItem == null)
+                    {
+                        FileListView.SelectedItem = FileListView.Items[0];
+                        FileListView.ScrollIntoView(FileListView.SelectedItem);
+                    }
+                }
+                else if (!isListView && IconListView.Items.Count > 0)
+                {
+                    if (IconListView.SelectedItem == null)
+                    {
+                        IconListView.SelectedItem = IconListView.Items[0];
+                        IconListView.ScrollIntoView(IconListView.SelectedItem);
+                    }
+                }
+            }
+            else if (e.Key == Key.OemComma)
             {
                 int prevFolder = currentFolder > 0 ? currentFolder - 1 : 9;
                 NavigateToFolder(prevFolder);
