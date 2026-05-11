@@ -1201,6 +1201,16 @@ return
         {
             try
             {
+                int deletedIndex = -1;
+                if (isListView)
+                {
+                    deletedIndex = FileListView.Items.IndexOf(item);
+                }
+                else
+                {
+                    deletedIndex = IconListView.Items.IndexOf(item);
+                }
+
                 MoveToRecycleBin(item.FullPath);
                 NavigateToFolder(currentFolder);
                 Dispatcher.BeginInvoke(new Action(() =>
@@ -1208,13 +1218,30 @@ return
                     var items = isListView ? FileListView.Items : IconListView.Items;
                     if (items.Count > 0)
                     {
+                        int selectIndex = deletedIndex;
+                        if (selectIndex >= items.Count)
+                        {
+                            selectIndex = items.Count - 1;
+                        }
+                        if (selectIndex < 0) selectIndex = 0;
+                        
                         if (isListView)
                         {
-                            FileListView.SelectedItem = items[0];
+                            FileListView.SelectedIndex = selectIndex;
+                            var container = FileListView.ItemContainerGenerator.ContainerFromIndex(selectIndex) as System.Windows.Controls.ListViewItem;
+                            if (container != null)
+                            {
+                                container.Focus();
+                            }
                         }
                         else
                         {
-                            IconListView.SelectedItem = items[0];
+                            IconListView.SelectedIndex = selectIndex;
+                            var container = IconListView.ItemContainerGenerator.ContainerFromIndex(selectIndex) as System.Windows.Controls.ListBoxItem;
+                            if (container != null)
+                            {
+                                container.Focus();
+                            }
                         }
                     }
                 }), System.Windows.Threading.DispatcherPriority.Loaded);
