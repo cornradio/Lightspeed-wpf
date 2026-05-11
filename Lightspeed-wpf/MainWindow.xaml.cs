@@ -55,6 +55,10 @@ namespace Lightspeed_wpf
         private IntPtr windowHandle;
         private HwndSource? source;
 
+        private Dictionary<int, Dictionary<bool, List<FileItem>>> folderCache = new Dictionary<int, Dictionary<bool, List<FileItem>>>();
+        private Dictionary<string, ImageSource> iconCache = new Dictionary<string, ImageSource>();
+        private Dictionary<int, DateTime> folderCacheTime = new Dictionary<int, DateTime>();
+
         private uint currentModifiers = 0x0001;
         private uint currentKey = 0x53;
         private bool isCapturingKey = false;
@@ -359,28 +363,65 @@ namespace Lightspeed_wpf
 
             try
             {
-                var dirs = Directory.GetDirectories(path);
-                var files = Directory.GetFiles(path);
+                bool hasListCache = folderCache.ContainsKey(folderNum) && folderCache[folderNum].ContainsKey(false);
+                bool hasIconCache = folderCache.ContainsKey(folderNum) && folderCache[folderNum].ContainsKey(true);
 
-                foreach (var dir in dirs)
+                if (hasListCache && hasIconCache)
                 {
-                    var fileItem = CreateFileItem(dir, true, false);
-                    var iconItem = CreateFileItem(dir, true, true);
-                    FileListView.Items.Add(fileItem);
-                    IconListView.Items.Add(iconItem);
-                }
-
-                foreach (var file in files)
-                {
-                    string fileName = Path.GetFileName(file);
-                    if (AppSettings.Instance.HideDesktopIni && fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                    foreach (var item in folderCache[folderNum][false])
                     {
-                        continue;
+                        if (item.IsDirectory || (!AppSettings.Instance.HideDesktopIni || !Path.GetFileName(item.FullPath).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            FileListView.Items.Add(item);
+                        }
                     }
-                    var fileItem = CreateFileItem(file, false, false);
-                    var iconItem = CreateFileItem(file, false, true);
-                    FileListView.Items.Add(fileItem);
-                    IconListView.Items.Add(iconItem);
+                    foreach (var item in folderCache[folderNum][true])
+                    {
+                        if (item.IsDirectory || (!AppSettings.Instance.HideDesktopIni || !Path.GetFileName(item.FullPath).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            IconListView.Items.Add(item);
+                        }
+                    }
+                }
+                else
+                {
+                    var dirs = Directory.GetDirectories(path);
+                    var files = Directory.GetFiles(path);
+                    var listItems = new List<FileItem>();
+                    var iconItems = new List<FileItem>();
+
+                    foreach (var dir in dirs)
+                    {
+                        var listItem = CreateFileItem(dir, true, false);
+                        var iconItem = CreateFileItem(dir, true, true);
+                        listItems.Add(listItem);
+                        iconItems.Add(iconItem);
+                        FileListView.Items.Add(listItem);
+                        IconListView.Items.Add(iconItem);
+                    }
+
+                    foreach (var file in files)
+                    {
+                        string fileName = Path.GetFileName(file);
+                        if (AppSettings.Instance.HideDesktopIni && fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+                        var listItem = CreateFileItem(file, false, false);
+                        var iconItem = CreateFileItem(file, false, true);
+                        listItems.Add(listItem);
+                        iconItems.Add(iconItem);
+                        FileListView.Items.Add(listItem);
+                        IconListView.Items.Add(iconItem);
+                    }
+
+                    if (!folderCache.ContainsKey(folderNum))
+                    {
+                        folderCache[folderNum] = new Dictionary<bool, List<FileItem>>();
+                    }
+                    folderCache[folderNum][false] = listItems;
+                    folderCache[folderNum][true] = iconItems;
+                    folderCacheTime[folderNum] = DateTime.Now;
                 }
             }
             catch (Exception ex)
@@ -426,6 +467,12 @@ namespace Lightspeed_wpf
 
         private ImageSource GetIcon(string path, bool isDirectory, int size)
         {
+            string cacheKey = $"{path}_{size}";
+            if (iconCache.ContainsKey(cacheKey))
+            {
+                return iconCache[cacheKey];
+            }
+
             SHFILEINFO shfi = new SHFILEINFO();
             uint flags = SHGFI_ICON | SHGFI_LARGEICON;
             uint attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
@@ -461,6 +508,7 @@ namespace Lightspeed_wpf
                                 BitmapSizeOptions.FromEmptyOptions());
                             DeleteObject(hBitmap);
                             DestroyIcon(shfi.hIcon);
+                            iconCache[cacheKey] = imageSource;
                             return imageSource;
                         }
                         finally
@@ -509,6 +557,25 @@ namespace Lightspeed_wpf
                     ? new SolidColorBrush(Colors.White)
                     : new SolidColorBrush(Colors.White);
             }
+        }
+
+        private void ClearFolderCache(int folderNum)
+        {
+            if (folderCache.ContainsKey(folderNum))
+            {
+                folderCache.Remove(folderNum);
+            }
+            if (folderCacheTime.ContainsKey(folderNum))
+            {
+                folderCacheTime.Remove(folderNum);
+            }
+        }
+
+        private void ClearAllCache()
+        {
+            folderCache.Clear();
+            folderCacheTime.Clear();
+            iconCache.Clear();
         }
 
         private void FolderButton_Click(object sender, RoutedEventArgs e)
@@ -681,6 +748,7 @@ namespace Lightspeed_wpf
         {
             AppSettings.Instance.HideDesktopIni = ChkHideDesktopIni.IsChecked ?? false;
             AppSettings.Instance.Save();
+            ClearFolderCache(currentFolder);
             NavigateToFolder(currentFolder);
         }
 
@@ -688,6 +756,7 @@ namespace Lightspeed_wpf
         {
             AppSettings.Instance.HideExtensions = ChkHideExtensions.IsChecked ?? false;
             AppSettings.Instance.Save();
+            ClearFolderCache(currentFolder);
             NavigateToFolder(currentFolder);
         }
 
@@ -737,6 +806,7 @@ namespace Lightspeed_wpf
                     }
                 }
                 
+                ClearFolderCache(currentFolder);
                 NavigateToFolder(currentFolder);
             }
         }
@@ -971,6 +1041,7 @@ return
             TxtIconSize.Text = ((int)listIconSize).ToString();
             AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.Save();
+            ClearAllCache();
             NavigateToFolder(currentFolder);
         }
 
@@ -982,6 +1053,7 @@ return
             TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
+            ClearAllCache();
             NavigateToFolder(currentFolder);
         }
 
@@ -1182,6 +1254,7 @@ return
                 {
                     File.Move(item.FullPath, newPath);
                 }
+                ClearFolderCache(currentFolder);
                 NavigateToFolder(currentFolder);
             }
             catch (Exception ex)
@@ -1223,6 +1296,7 @@ return
                 }
 
                 MoveToRecycleBin(item.FullPath);
+                ClearFolderCache(currentFolder);
                 NavigateToFolder(currentFolder);
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
