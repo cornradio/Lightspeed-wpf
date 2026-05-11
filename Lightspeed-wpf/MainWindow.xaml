@@ -253,24 +253,57 @@
             </Style.Triggers>
         </Style>
 
-        <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#2D2D2D"/>
-            <Setter Property="Width" Value="12"/>
-        </Style>
+       <!-- 1. 滑块样式 (Thumb) -->
+<Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="Thumb">
+                <!-- 这里的 Background 是滑块本身的颜色 -->
+                <Border Background="#4D4D4D" CornerRadius="5" Margin="2,0"/>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
 
-        <Style TargetType="Thumb" x:Key="ScrollBarThumb">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Thumb">
-                        <Border Background="#4D4D4D" CornerRadius="4"/>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+<!-- 2. 透明的按钮样式 (用于隐藏上下箭头或自定义箭头) -->
+<Style x:Key="InvisibleThumbStyle" TargetType="RepeatButton">
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="RepeatButton">
+                <Border Background="Transparent" />
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
 
-        <Style TargetType="ScrollViewer">
-            <Setter Property="Background" Value="#1E1E1E"/>
-        </Style>
+<!-- 3. ScrollBar 主样式 -->
+<Style TargetType="ScrollBar">
+    <Setter Property="Background" Value="#2D2D2D"/>
+    <Setter Property="Width" Value="10"/>
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="ScrollBar">
+                <Grid x:Name="Bg" Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
+                    <!-- Track 是滑行的轨道 -->
+                    <Track x:Name="PART_Track" IsDirectionReversed="true" IsEnabled="{TemplateBinding IsEnabled}">
+                        <!-- 轨道上方的透明区域 -->
+                        <Track.DecreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageUpCommand}" />
+                        </Track.DecreaseRepeatButton>
+                        <!-- 轨道下方的透明区域 -->
+                        <Track.IncreaseRepeatButton>
+                            <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageDownCommand}" />
+                        </Track.IncreaseRepeatButton>
+                        <!-- 中间的滑块 -->
+                        <Track.Thumb>
+                            <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                        </Track.Thumb>
+                    </Track>
+                </Grid>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
 
         <Style TargetType="ListView">
             <Setter Property="Background" Value="#1E1E1E"/>
@@ -282,29 +315,30 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
-        <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="#2D2D2D"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#4D4D4D"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <Style TargetType="MenuItem">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3D3D3D"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
-        <Style TargetType="Separator">
-            <Setter Property="Background" Value="#4D4D4D"/>
-            <Setter Property="Height" Value="1"/>
-            <Setter Property="Margin" Value="5,2"/>
-        </Style>
+<Style TargetType="ContextMenu">
+    <Setter Property="Background" Value="#2D2D2D"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderBrush" Value="#4D4D4D"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <!-- 关键点 1：消除默认 Padding -->
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="ContextMenu">
+                <!-- 关键点 2：使用 Border 包装 ItemsPresenter，并绑定背景色 -->
+                <Border Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        SnapsToDevicePixels="True">
+                    <ScrollViewer CanContentScroll="True">
+                        <!-- 确保内容没有默认 Margin -->
+                        <ItemsPresenter Margin="0"/>
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
     </Window.Resources>
 
     <Grid>

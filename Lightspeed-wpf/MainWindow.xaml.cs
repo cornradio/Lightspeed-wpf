@@ -16,6 +16,7 @@ using WpfMessageBox = System.Windows.MessageBox;
 using WpfClipboard = System.Windows.Clipboard;
 using WpfTextBox = System.Windows.Controls.TextBox;
 using WpfListViewItem = System.Windows.Controls.ListViewItem;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Lightspeed_wpf
 {
@@ -67,6 +68,9 @@ namespace Lightspeed_wpf
 
         [DllImport("shell32.dll", EntryPoint = "SHParseDisplayName")]
         private static extern IntPtr SHParseDisplayName([MarshalAs(UnmanagedType.LPWStr)] string pszName, IntPtr pbc, out IntPtr ppidl, uint sfgaoIn, out uint psfgaoOut);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern uint SHGetKnownFolderPath([MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags, IntPtr hToken, out IntPtr pszPath);
 
         private const uint FO_DELETE = 0x0003;
         private const uint FOF_ALLOWUNDO = 0x0040;
@@ -1048,6 +1052,13 @@ return
                 MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
                 openWithItem.Click += (s, args) => OpenWith(item.FullPath);
                 menu.Items.Add(openWithItem);
+
+                if (item.FullPath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                {
+                    MenuItem openLocationItem = new MenuItem { Header = "打开文件所在位置" };
+                    openLocationItem.Click += (s, args) => OpenShortcutTargetLocation(item.FullPath);
+                    menu.Items.Add(openLocationItem);
+                }
             }
 
             menu.Items.Add(new Separator());
@@ -1422,6 +1433,51 @@ return
                 Arguments = $"shell32.dll,OpenAs_RunDLL {path}"
             };
             System.Diagnostics.Process.Start(psi);
+        }
+
+        private string? GetShortcutTarget(string lnkPath)
+        {
+            try
+            {
+                Type? shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null)
+                    return null;
+
+                object? shell = Activator.CreateInstance(shellType);
+                if (shell == null)
+                    return null;
+
+                object? shortcut = shellType.InvokeMember("CreateShortcut", System.Reflection.BindingFlags.InvokeMethod, null, shell, new object[] { lnkPath });
+                if (shortcut == null)
+                {
+                    Marshal.ReleaseComObject(shell);
+                    return null;
+                }
+
+                string? targetPath = shortcut.GetType().InvokeMember("TargetPath", System.Reflection.BindingFlags.GetProperty, null, shortcut, null) as string;
+                
+                Marshal.ReleaseComObject(shortcut);
+                Marshal.ReleaseComObject(shell);
+                
+                return targetPath;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void OpenShortcutTargetLocation(string lnkPath)
+        {
+            string? targetPath = GetShortcutTarget(lnkPath);
+            if (string.IsNullOrEmpty(targetPath))
+                return;
+
+            string? folderPath = Directory.Exists(targetPath) ? targetPath : Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", folderPath);
+            }
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
