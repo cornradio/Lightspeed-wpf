@@ -14,6 +14,8 @@ using Forms = System.Windows.Forms;
 using WpfButton = System.Windows.Controls.Button;
 using WpfMessageBox = System.Windows.MessageBox;
 using WpfClipboard = System.Windows.Clipboard;
+using WpfTextBox = System.Windows.Controls.TextBox;
+using WpfListViewItem = System.Windows.Controls.ListViewItem;
 
 namespace Lightspeed_wpf
 {
@@ -55,6 +57,7 @@ namespace Lightspeed_wpf
         private uint currentModifiers = 0x0001;
         private uint currentKey = 0x53;
         private bool isCapturingKey = false;
+        private FileItem? editingItem = null;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
@@ -1024,21 +1027,117 @@ return
 
         private void RenameItem(FileItem item)
         {
-            var inputDialog = new InputDialog("重命名", "请输入新名称:", item.Name);
-            if (inputDialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(inputDialog.ResponseText))
+            editingItem = item;
+            item.IsEditing = true;
+            if (isListView)
             {
-                try
+                FileListView.SelectedItem = item;
+                var container = FileListView.ItemContainerGenerator.ContainerFromItem(item) as WpfListViewItem;
+                if (container != null)
                 {
-                    string dir = Path.GetDirectoryName(item.FullPath);
-                    string newPath = Path.Combine(dir, inputDialog.ResponseText);
-                    File.Move(item.FullPath, newPath);
-                    NavigateToFolder(currentFolder);
-                }
-                catch (Exception ex)
-                {
-                    WpfMessageBox.Show($"重命名失败: {ex.Message}");
+                    var textBox = FindVisualChild<WpfTextBox>(container);
+                    if (textBox != null)
+                    {
+                        textBox.Text = item.Name;
+                        textBox.Focus();
+                        textBox.SelectAll();
+                    }
                 }
             }
+            else
+            {
+                IconListView.SelectedItem = item;
+                var container = IconListView.ItemContainerGenerator.ContainerFromItem(item) as ListBoxItem;
+                if (container != null)
+                {
+                    var textBox = FindVisualChild<WpfTextBox>(container);
+                    if (textBox != null)
+                    {
+                        textBox.Text = item.Name;
+                        textBox.Focus();
+                        textBox.SelectAll();
+                    }
+                }
+            }
+        }
+
+        private void EditTextBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (editingItem != null && editingItem.IsEditing)
+            {
+                if (sender is WpfTextBox textBox)
+                {
+                    CommitRename(editingItem, textBox.Text);
+                }
+                editingItem.IsEditing = false;
+                editingItem = null;
+            }
+        }
+
+        private void EditTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                if (sender is WpfTextBox textBox)
+                {
+                    FileItem? item = textBox.DataContext as FileItem;
+                    if (item != null)
+                    {
+                        string newName = textBox.Text;
+                        editingItem.IsEditing = false;
+                        editingItem = null;
+                        CommitRename(item, newName);
+                    }
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape)
+            {
+                if (editingItem != null)
+                {
+                    editingItem.IsEditing = false;
+                    editingItem = null;
+                }
+                e.Handled = true;
+            }
+        }
+
+        private void CommitRename(FileItem item, string newName)
+        {
+            if (string.IsNullOrWhiteSpace(newName) || newName == item.Name)
+            {
+                return;
+            }
+
+            try
+            {
+                string dir = Path.GetDirectoryName(item.FullPath) ?? "";
+                string newPath = Path.Combine(dir, newName);
+                File.Move(item.FullPath, newPath);
+                NavigateToFolder(currentFolder);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"重命名失败: {ex.Message}");
+            }
+        }
+
+        private T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+                if (child is T result)
+                {
+                    return result;
+                }
+                var grandChild = FindVisualChild<T>(child);
+                if (grandChild != null)
+                {
+                    return grandChild;
+                }
+            }
+            return null;
         }
 
         private void DeleteItem(FileItem item)
@@ -1088,6 +1187,11 @@ return
                 return;
             }
 
+            if (editingItem != null)
+            {
+                return;
+            }
+
             if (e.Key == Key.Enter)
             {
                 if (isListView && FileListView.SelectedItem is FileItem listItem)
@@ -1098,6 +1202,19 @@ return
                 else if (!isListView && IconListView.SelectedItem is FileItem iconItem)
                 {
                     OpenItem(iconItem);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.F2)
+            {
+                if (isListView && FileListView.SelectedItem is FileItem fileItem1)
+                {
+                    RenameItem(fileItem1);
+                    e.Handled = true;
+                }
+                else if (!isListView && IconListView.SelectedItem is FileItem iconItem1)
+                {
+                    RenameItem(iconItem1);
                     e.Handled = true;
                 }
             }
@@ -1264,13 +1381,66 @@ return
         }
     }
 
-    public class FileItem
+    public class BoolToVisibilityConverter : System.Windows.Data.IValueConverter
     {
-        public string Name { get; set; } = "";
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (bool)value ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (Visibility)value == Visibility.Visible;
+        }
+    }
+
+    public class InverseBoolToVisibilityConverter : System.Windows.Data.IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (bool)value ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (Visibility)value != Visibility.Visible;
+        }
+    }
+
+    public class FileItem : System.ComponentModel.INotifyPropertyChanged
+    {
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+        private string _name = "";
+        private bool _isEditing = false;
+        private bool _justOpened = false;
+
+        public string Name
+        {
+            get => _name;
+            set { _name = value; OnPropertyChanged("Name"); }
+        }
+
         public string FullPath { get; set; } = "";
         public bool IsDirectory { get; set; }
         public ImageSource? Icon { get; set; }
         public double IconSize { get; set; } = 48;
-        public bool JustOpened { get; set; }
+
+        public bool JustOpened
+        {
+            get => _justOpened;
+            set { _justOpened = value; OnPropertyChanged("JustOpened"); }
+        }
+
+        public bool IsEditing
+        {
+            get => _isEditing;
+            set { _isEditing = value; OnPropertyChanged("IsEditing"); }
+        }
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
     }
 }
