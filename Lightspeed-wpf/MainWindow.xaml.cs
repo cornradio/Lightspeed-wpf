@@ -573,8 +573,29 @@ namespace Lightspeed_wpf
 
         private void ClearAllCache()
         {
+            foreach (var folder in folderCache.Values)
+            {
+                foreach (var viewItems in folder.Values)
+                {
+                    foreach (var item in viewItems)
+                    {
+                        if (item.Icon is System.Windows.Media.Imaging.BitmapSource bitmapSource)
+                        {
+                            bitmapSource.Freeze();
+                        }
+                    }
+                }
+            }
             folderCache.Clear();
             folderCacheTime.Clear();
+            
+            foreach (var icon in iconCache.Values)
+            {
+                if (icon is System.Windows.Media.Imaging.BitmapSource bitmapSource)
+                {
+                    bitmapSource.Freeze();
+                }
+            }
             iconCache.Clear();
         }
 
@@ -658,6 +679,7 @@ namespace Lightspeed_wpf
 
         private void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
+            ClearFolderCache(currentFolder);
             NavigateToFolder(currentFolder);
         }
 
@@ -962,7 +984,7 @@ return
 
             ahkContent += $@"
 !/::
-Run, ""{Assembly.GetExecutingAssembly().Location}"" --help
+Run, ""{System.AppContext.BaseDirectory}Lightspeed-wpf.exe"" --help
 return
 " + "\n";
 
@@ -1208,7 +1230,7 @@ return
                 if (sender is WpfTextBox textBox)
                 {
                     FileItem? item = textBox.DataContext as FileItem;
-                    if (item != null)
+                    if (item != null && editingItem != null)
                     {
                         string newName = textBox.Text;
                         editingItem.IsEditing = false;
@@ -1617,6 +1639,7 @@ return
                 notifyIcon.Visible = false;
                 notifyIcon.Dispose();
             }
+            ClearAllCache();
             System.Windows.Application.Current.Shutdown();
         }
     }

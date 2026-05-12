@@ -75,3 +75,26 @@ Before executing any command or providing command examples, always verify:
 - **COMPLETE CONTEXT**: Never rely on previous messages for critical information
 
 **Remember:** You must always provide explicit, complete references. Never assume the user can fill in gaps or refer back to earlier messages.
+
+## Post-Modification Packaging Rule
+
+**CRITICAL**: After completing ANY code modification, you MUST execute the packaging script.
+
+### Workflow:
+1. **Complete code modifications** - Finish all code changes
+2. **Build verification** - Run `dotnet build` and verify no errors
+3. **Execute packaging** - Run `.\pack.ps1` to package the application
+4. **Verify packaging success** - Confirm the package was created successfully
+5. **Report completion** - Only then inform the user that work is done
+
+### Command:
+```powershell
+.\pack.ps1
+```
+
+### Why This Matters:
+- Ensures the user can immediately test the latest changes
+- Prevents forgetting to package after modifications
+- Provides the most up-to-date executable for the user
+
+**This rule applies to ALL code modification tasks. Always run pack.ps1 after completing code changes.**
