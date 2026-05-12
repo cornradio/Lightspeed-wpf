@@ -162,7 +162,7 @@ namespace Lightspeed_wpf
                 notifyIcon.Icon = SystemIcons.Application;
             }
             notifyIcon.Text = "Lightspeed";
-            notifyIcon.Visible = false;
+            notifyIcon.Visible = true;
             notifyIcon.DoubleClick += (s, e) => ShowFromTray();
 
             var contextMenu = new Forms.ContextMenuStrip();
@@ -188,7 +188,6 @@ namespace Lightspeed_wpf
             Show();
             WindowState = WindowState.Normal;
             Activate();
-            if (notifyIcon != null) notifyIcon.Visible = false;
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -341,10 +340,6 @@ namespace Lightspeed_wpf
                 Show();
                 WindowState = WindowState.Normal;
                 Activate();
-                if (notifyIcon != null)
-                {
-                    notifyIcon.Visible = false;
-                }
             }
         }
 
