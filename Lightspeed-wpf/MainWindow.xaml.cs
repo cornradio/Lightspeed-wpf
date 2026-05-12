@@ -147,6 +147,44 @@ namespace Lightspeed_wpf
             folderButtons.Add(Btn7);
             folderButtons.Add(Btn8);
             folderButtons.Add(Btn9);
+            
+            foreach (var btn in folderButtons)
+            {
+                btn.PreviewMouseWheel += FolderButton_MouseWheel;
+            }
+        }
+        
+        private DateTime lastWheelTime = DateTime.MinValue;
+        private const int wheelCooldownMs = 50;
+        
+        private void FolderButton_MouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            DateTime now = DateTime.Now;
+            if ((now - lastWheelTime).TotalMilliseconds < wheelCooldownMs)
+            {
+                e.Handled = true;
+                return;
+            }
+            lastWheelTime = now;
+            
+            if (sender is WpfButton btn)
+            {
+                int currentIndex = folderButtons.IndexOf(btn);
+                if (currentIndex >= 0)
+                {
+                    if (e.Delta > 0)
+                    {
+                        int prevFolder = currentFolder > 0 ? currentFolder - 1 : 9;
+                        NavigateToFolder(prevFolder);
+                    }
+                    else
+                    {
+                        int nextFolder = currentFolder < 9 ? currentFolder + 1 : 0;
+                        NavigateToFolder(nextFolder);
+                    }
+                    e.Handled = true;
+                }
+            }
         }
 
         private void InitializeTrayIcon()
@@ -163,6 +201,7 @@ namespace Lightspeed_wpf
             }
             notifyIcon.Text = "Lightspeed";
             notifyIcon.Visible = true;
+            notifyIcon.Click += (s, e) => ShowFromTray();
             notifyIcon.DoubleClick += (s, e) => ShowFromTray();
 
             var contextMenu = new Forms.ContextMenuStrip();
