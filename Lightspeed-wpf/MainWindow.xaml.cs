@@ -1632,15 +1632,7 @@ return
 
         public void ForceClose()
         {
-            source?.RemoveHook(HwndHook);
-            UnregisterHotKey(windowHandle, HOTKEY_ID);
-            if (notifyIcon != null)
-            {
-                notifyIcon.Visible = false;
-                notifyIcon.Dispose();
-            }
-            ClearAllCache();
-            System.Windows.Application.Current.Shutdown();
+            System.Environment.Exit(0);
         }
     }
 
