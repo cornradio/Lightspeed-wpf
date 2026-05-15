@@ -15,6 +15,15 @@ if (-not (Test-Path $csprojPath)) {
 
 $publishDir = Join-Path $projectDir $OutputDir
 
+$processName = "Lightspeed-wpf"
+$running = Get-Process -Name $processName -ErrorAction SilentlyContinue
+if ($running) {
+    Write-Host "Killing running instances of $processName..." -ForegroundColor Yellow
+    $running | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+    Write-Host "Done." -ForegroundColor Green
+}
+
 Write-Host "Building single-file executable..." -ForegroundColor Yellow
 
 dotnet publish $csprojPath `

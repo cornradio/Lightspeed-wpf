@@ -331,9 +331,22 @@ namespace Lightspeed_wpf
             };
         }
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
         private bool IsFullscreenAppRunning()
         {
             IntPtr hwnd = GetForegroundWindow();
+            
+            StringBuilder className = new StringBuilder(256);
+            GetClassName(hwnd, className, className.Capacity);
+            string windowClass = className.ToString();
+            
+            if (windowClass == "Progman" || windowClass == "WorkerW")
+            {
+                return false;
+            }
+            
             RECT appRect;
             RECT screenRect;
             GetWindowRect(hwnd, out appRect);
