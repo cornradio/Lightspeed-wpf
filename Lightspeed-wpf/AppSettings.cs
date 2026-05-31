@@ -9,6 +9,7 @@ namespace Lightspeed_wpf
         private static readonly string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
         public bool AutoStartAHK { get; set; } = false;
+        public bool AutoStartWithWindows { get; set; } = false;
         public bool HideDesktopIni { get; set; } = false;
         public bool HideExtensions { get; set; } = false;
         public bool IsListView { get; set; } = true;

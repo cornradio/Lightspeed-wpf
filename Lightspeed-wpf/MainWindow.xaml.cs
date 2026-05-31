@@ -133,6 +133,7 @@ namespace Lightspeed_wpf
             InitializeFolderButtons();
             InitializeTrayIcon();
             Loaded += MainWindow_Loaded;
+            App.SecondInstanceLaunched += () => ShowFromTray();
         }
 
         private void InitializeFolderButtons()
@@ -190,15 +191,7 @@ namespace Lightspeed_wpf
         private void InitializeTrayIcon()
         {
             notifyIcon = new Forms.NotifyIcon();
-            string iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
-            if (System.IO.File.Exists(iconPath))
-            {
-                notifyIcon.Icon = new System.Drawing.Icon(iconPath);
-            }
-            else
-            {
-                notifyIcon.Icon = SystemIcons.Application;
-            }
+            notifyIcon.Icon = LoadAppIcon() ?? SystemIcons.Application;
             notifyIcon.Text = "Lightspeed";
             notifyIcon.Visible = true;
             notifyIcon.Click += (s, e) => ShowFromTray();
@@ -220,6 +213,32 @@ namespace Lightspeed_wpf
             contextMenu.Items.Add(quitItem);
 
             notifyIcon.ContextMenuStrip = contextMenu;
+        }
+
+        private static System.Drawing.Icon? LoadAppIcon()
+        {
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                using var stream = asm.GetManifestResourceStream("icon.ico");
+                if (stream != null)
+                {
+                    return new System.Drawing.Icon(stream);
+                }
+            }
+            catch { }
+
+            try
+            {
+                string iconPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "icon.ico");
+                if (System.IO.File.Exists(iconPath))
+                {
+                    return new System.Drawing.Icon(iconPath);
+                }
+            }
+            catch { }
+
+            return null;
         }
 
         private void ShowFromTray()
@@ -244,11 +263,76 @@ namespace Lightspeed_wpf
                 Directory.CreateDirectory(basePath);
             }
             NavigateToFolder(0);
+            PreloadAllFolders();
+        }
+
+        private void PreloadAllFolders()
+        {
+            for (int i = 1; i <= 9; i++)
+            {
+                int folderNum = i;
+                Dispatcher.BeginInvoke(new Action(() => PreloadFolderCache(folderNum)),
+                    System.Windows.Threading.DispatcherPriority.Background);
+            }
+        }
+
+        private void PreloadFolderCache(int folderNum)
+        {
+            if (folderCache.ContainsKey(folderNum)
+                && folderCache[folderNum].ContainsKey(false)
+                && folderCache[folderNum].ContainsKey(true))
+            {
+                return;
+            }
+
+            string path = Path.Combine(basePath, folderNum.ToString());
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            try
+            {
+                var dirs = Directory.GetDirectories(path);
+                var files = Directory.GetFiles(path);
+                var listItems = new List<FileItem>();
+                var iconItems = new List<FileItem>();
+
+                foreach (var dir in dirs)
+                {
+                    listItems.Add(CreateFileItem(dir, true, false));
+                    iconItems.Add(CreateFileItem(dir, true, true));
+                }
+
+                foreach (var file in files)
+                {
+                    string fileName = Path.GetFileName(file);
+                    if (AppSettings.Instance.HideDesktopIni && fileName.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    listItems.Add(CreateFileItem(file, false, false));
+                    iconItems.Add(CreateFileItem(file, false, true));
+                }
+
+                if (!folderCache.ContainsKey(folderNum))
+                {
+                    folderCache[folderNum] = new Dictionary<bool, List<FileItem>>();
+                }
+                folderCache[folderNum][false] = listItems;
+                folderCache[folderNum][true] = iconItems;
+                folderCacheTime[folderNum] = DateTime.Now;
+            }
+            catch { }
         }
 
         private void LoadSettings()
         {
             ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
+            ChkAutoStartWithWindows.IsChecked = AppSettings.Instance.AutoStartWithWindows;
+
+            var ver = Assembly.GetExecutingAssembly().GetName().Version;
+            TxtVersion.Text = ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "-";
             ChkHideDesktopIni.IsChecked = AppSettings.Instance.HideDesktopIni;
             ChkHideExtensions.IsChecked = AppSettings.Instance.HideExtensions;
             ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
@@ -304,7 +388,7 @@ namespace Lightspeed_wpf
             if ((currentModifiers & 0x0002) != 0) modifiers += "Ctrl+";
             if ((currentModifiers & 0x0004) != 0) modifiers += "Shift+";
             
-            string keyName = GetKeyDisplayName((Key)currentKey);
+            string keyName = GetKeyDisplayName(KeyInterop.KeyFromVirtualKey((int)currentKey));
             TxtHotkey.Text = modifiers + keyName;
         }
 
@@ -813,6 +897,118 @@ namespace Lightspeed_wpf
             AppSettings.Instance.Save();
         }
 
+        private const string ReleasesPageUrl = "https://github.com/cornradio/Lightspeed-wpf/releases";
+        private const string ReleasesApiUrl = "https://api.github.com/repos/cornradio/Lightspeed-wpf/releases/latest";
+        private static readonly System.Net.Http.HttpClient _updateHttpClient = CreateUpdateHttpClient();
+
+        private static System.Net.Http.HttpClient CreateUpdateHttpClient()
+        {
+            var client = new System.Net.Http.HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Lightspeed-wpf-update-check");
+            client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+            return client;
+        }
+
+        private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn) btn.IsEnabled = false;
+            TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88));
+            TxtUpdateStatus.Text = "检查中...";
+
+            try
+            {
+                string json = await _updateHttpClient.GetStringAsync(ReleasesApiUrl);
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                string? tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
+                if (string.IsNullOrWhiteSpace(tag))
+                {
+                    TxtUpdateStatus.Text = "未能获取版本信息";
+                    return;
+                }
+
+                var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+                if (TryParseTagVersion(tag, out var latest) && latest > current)
+                {
+                    TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x6B, 0x9F, 0xFF));
+                    TxtUpdateStatus.Text = $"发现新版本 {tag}";
+                    var result = WpfMessageBox.Show(
+                        $"发现新版本 {tag}（当前 v{current.Major}.{current.Minor}.{current.Build}）。\n是否打开下载页面？",
+                        "检查更新",
+                        System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Information);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = ReleasesPageUrl,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                else
+                {
+                    TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
+                    TxtUpdateStatus.Text = "已是最新版本";
+                }
+            }
+            catch (Exception ex)
+            {
+                TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE8, 0x11, 0x23));
+                TxtUpdateStatus.Text = "检查失败: " + ex.Message;
+            }
+            finally
+            {
+                if (sender is System.Windows.Controls.Button btn2) btn2.IsEnabled = true;
+            }
+        }
+
+        private static bool TryParseTagVersion(string tag, out Version version)
+        {
+            string trimmed = tag.Trim();
+            if (trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith("V"))
+            {
+                trimmed = trimmed.Substring(1);
+            }
+            return Version.TryParse(trimmed, out version!);
+        }
+
+        private const string AutoStartRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string AutoStartRegistryValueName = "Lightspeed";
+
+        private void ChkAutoStartWithWindows_Changed(object sender, RoutedEventArgs e)
+        {
+            bool enable = ChkAutoStartWithWindows.IsChecked ?? false;
+            AppSettings.Instance.AutoStartWithWindows = enable;
+            AppSettings.Instance.Save();
+
+            try
+            {
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(AutoStartRegistryKey, writable: true);
+                if (key == null) return;
+
+                if (enable)
+                {
+                    string? exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(exePath))
+                    {
+                        key.SetValue(AutoStartRegistryValueName, "\"" + exePath + "\"");
+                    }
+                }
+                else
+                {
+                    if (key.GetValue(AutoStartRegistryValueName) != null)
+                    {
+                        key.DeleteValue(AutoStartRegistryValueName, throwOnMissingValue: false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show("设置开机自启动失败: " + ex.Message, "错误", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+
         private void ChkHideDesktopIni_Changed(object sender, RoutedEventArgs e)
         {
             AppSettings.Instance.HideDesktopIni = ChkHideDesktopIni.IsChecked ?? false;
@@ -884,13 +1080,12 @@ namespace Lightspeed_wpf
         {
             isCapturingKey = true;
             TxtHotkey.Text = "请按任意键...";
-            PreviewKeyDown += CaptureHotkey_KeyDown;
+            Focus();
         }
 
         private void CaptureHotkey_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             e.Handled = true;
-            PreviewKeyDown -= CaptureHotkey_KeyDown;
             isCapturingKey = false;
             
             if (e.Key == Key.Escape)
@@ -908,12 +1103,8 @@ namespace Lightspeed_wpf
             if (key == Key.LWin || key == Key.RWin || key == Key.LeftShift || key == Key.RightShift ||
                 key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt)
             {
-                TxtHotkey.Text = "请按一个非修饰键";
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    isCapturingKey = true;
-                    PreviewKeyDown += CaptureHotkey_KeyDown;
-                }), System.Windows.Threading.DispatcherPriority.Input);
+                TxtHotkey.Text = "请按一个非修饰键 (含修饰键)...";
+                isCapturingKey = true;
                 return;
             }
             
@@ -928,11 +1119,12 @@ namespace Lightspeed_wpf
                 key = Key.S;
             }
             
+            uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
             currentModifiers = modifiers;
-            currentKey = (uint)key;
-            
+            currentKey = vk;
+
             AppSettings.Instance.HotkeyModifiers = (int)modifiers;
-            AppSettings.Instance.HotkeyKey = (int)key;
+            AppSettings.Instance.HotkeyKey = (int)vk;
             AppSettings.Instance.Save();
             
             UnregisterHotKey(windowHandle, HOTKEY_ID);
@@ -1434,6 +1626,7 @@ return
         {
             if (isCapturingKey)
             {
+                CaptureHotkey_KeyDown(sender, e);
                 e.Handled = true;
                 return;
             }

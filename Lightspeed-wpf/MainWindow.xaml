@@ -460,6 +460,11 @@
                     <StackPanel>
                         <TextBlock Text="设置" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
 
+                        <TextBlock Text="通用设置" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="ChkAutoStartWithWindows" Content="开机自启动" Foreground="White" Margin="0,5" Checked="ChkAutoStartWithWindows_Changed" Unchecked="ChkAutoStartWithWindows_Changed"/>
+
+                        <Separator Background="#3D3D3D" Margin="0,15"/>
+
                         <TextBlock Text="快捷键设置" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <TextBlock Text="当前快捷键: " Foreground="White" VerticalAlignment="Center"/>
@@ -514,6 +519,16 @@
                                 <TextBlock Text="https://lightspeed.cornradio.org/" Foreground="#6B9FFF"/>
                             </Hyperlink>
                         </TextBlock>
+
+                        <Separator Background="#3D3D3D" Margin="0,15"/>
+
+                        <TextBlock Text="关于" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5">
+                            <TextBlock Text="当前版本: " Foreground="White" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtVersion" Text="-" Foreground="#6B9FFF" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <Button Content="检查更新" Margin="10,0,0,0" Click="BtnCheckUpdate_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="10,5"/>
+                            <TextBlock x:Name="TxtUpdateStatus" Text="" Foreground="#888888" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
