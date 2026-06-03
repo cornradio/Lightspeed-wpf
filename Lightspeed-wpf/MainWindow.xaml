@@ -147,7 +147,7 @@
                     <Setter Property="Background" Value="#5D5D5D"/>
                 </Trigger>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="#569CD3"/>
+                    <Setter Property="Background" Value="#3A5A7A"/>
                     <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
@@ -349,7 +349,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Background="#1E1E1E">
+        <Grid Grid.Row="0" Background="#1E1E1E" x:Name="TitleBarGrid">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -513,6 +513,53 @@
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
+                        <TextBlock Text="Folder Aliases (数字按钮 0~9 的别名,鼠标悬停时显示)" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <UniformGrid Columns="2" Margin="0,5">
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="0:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias0" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="0"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="1:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias1" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="1"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="2:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias2" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="2"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="3:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias3" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="3"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="4:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias4" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="4"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="5:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias5" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="5"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="6:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias6" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="6"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="7:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias7" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="7"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="8:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias8" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="8"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,3">
+                                <TextBlock Text="9:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
+                                <TextBox x:Name="TxtAlias9" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="9"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="提示: 别名仅保存在配置文件中,不会修改文件夹名。留空则悬停时显示文件夹实际名称。" Foreground="#666666" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
+
+                        <Separator Background="#3D3D3D" Margin="0,15"/>
+
                         <TextBlock Text="Help Links" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
                         <TextBlock Margin="0,5">
                             <Hyperlink NavigateUri="https://lightspeed.cornradio.org/" RequestNavigate="Hyperlink_RequestNavigate">
@@ -543,14 +590,14 @@
                 
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
                     <Button Content="📁" Style="{StaticResource SideButtonStyle}" Click="BtnOpenInExplorer_Click" />
-                    <Button Content="♻" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
+                    <Button Content="⭯" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
                     <Button Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="Generate and Start AHK (No Dialog)"/>
                 </StackPanel>
                 
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <ToggleButton x:Name="BtnListView" Content="List" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
-                    <ToggleButton x:Name="BtnIconView" Content="Icon" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
-                    <ToggleButton x:Name="BtnSettings" Content="Setting" Click="BtnSettings_Click" Height="37" Margin="2,2" Background="#3D3D3D" Foreground="White" BorderThickness="0">
+                    <ToggleButton x:Name="BtnListView" Content="L" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
+                    <ToggleButton x:Name="BtnIconView" Content="G" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
+                    <ToggleButton x:Name="BtnSettings" Content="⋮" Click="BtnSettings_Click" Height="37" Margin="2,2" Background="#3D3D3D" Foreground="White" BorderThickness="0">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
                                 <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Padding="15,0">
@@ -570,5 +617,49 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- 顶部居中弹出:显示当前 hover 的数字按钮对应的别名 -->
+        <Popup x:Name="AliasPopup"
+               Placement="Top"
+               PlacementTarget="{Binding ElementName=TitleBarGrid}"
+               HorizontalOffset="0"
+               VerticalOffset="-8"
+               AllowsTransparency="True"
+               IsOpen="False">
+            <Border Background="#2D2D2D"
+                    BorderBrush="#569CD3"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12,6"
+                    MaxWidth="400">
+                <TextBlock x:Name="TxtAliasOverlay"
+                           Text=""
+                           Foreground="White"
+                           FontSize="13"
+                           FontWeight="Bold"
+                           TextWrapping="Wrap"/>
+            </Border>
+        </Popup>
+
+        <!-- Toast 通知:浮在底部栏之上, 不拦截鼠标事件 -->
+        <Grid Grid.Row="0" Grid.RowSpan="4"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Bottom"
+              Margin="0,0,0,70"
+              IsHitTestVisible="False">
+            <Border x:Name="ToastBar"
+                    Background="#E62D2D2D"
+                    BorderBrush="#569CD3"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="24,10"
+                    Visibility="Collapsed"
+                    Opacity="0">
+                <TextBlock x:Name="ToastText"
+                           Foreground="White"
+                           FontSize="13"
+                           FontWeight="SemiBold"/>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

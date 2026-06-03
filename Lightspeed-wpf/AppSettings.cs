@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -18,6 +19,8 @@ namespace Lightspeed_wpf
         public bool DisableHotkeyInFullscreen { get; set; } = true;
         public int ListIconSize { get; set; } = 30;
         public int IconIconSize { get; set; } = 60;
+        // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名
+        public Dictionary<string, string> FolderAliases { get; set; } = new Dictionary<string, string>();
 
         private static AppSettings? _instance;
         public static AppSettings Instance

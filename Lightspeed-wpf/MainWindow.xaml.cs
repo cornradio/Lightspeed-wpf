@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using WpfButton = System.Windows.Controls.Button;
 using WpfMessageBox = System.Windows.MessageBox;
@@ -148,11 +149,37 @@ namespace Lightspeed_wpf
             folderButtons.Add(Btn7);
             folderButtons.Add(Btn8);
             folderButtons.Add(Btn9);
-            
+
             foreach (var btn in folderButtons)
             {
                 btn.PreviewMouseWheel += FolderButton_MouseWheel;
+                btn.MouseEnter += FolderButton_MouseEnter;
+                btn.MouseLeave += FolderButton_MouseLeave;
             }
+        }
+
+        private void FolderButton_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (sender is WpfButton btn)
+            {
+                int index = folderButtons.IndexOf(btn);
+                if (index < 0) return;
+                string alias = AppSettings.Instance.FolderAliases.TryGetValue(index.ToString(), out var a) ? a : "";
+                if (!string.IsNullOrWhiteSpace(alias))
+                {
+                    TxtAliasOverlay.Text = alias;
+                    AliasPopup.IsOpen = true;
+                }
+                else
+                {
+                    AliasPopup.IsOpen = false;
+                }
+            }
+        }
+
+        private void FolderButton_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            AliasPopup.IsOpen = false;
         }
         
         private DateTime lastWheelTime = DateTime.MinValue;
@@ -378,6 +405,42 @@ namespace Lightspeed_wpf
                         UseShellExecute = true
                     });
                 }
+            }
+
+            // 加载 0~9 文件夹别名到设置面板的 TextBox
+            LoadFolderAliasesToUI();
+        }
+
+        private void LoadFolderAliasesToUI()
+        {
+            var aliases = AppSettings.Instance.FolderAliases;
+            TxtAlias0.Text = aliases.TryGetValue("0", out var a0) ? a0 : "";
+            TxtAlias1.Text = aliases.TryGetValue("1", out var a1) ? a1 : "";
+            TxtAlias2.Text = aliases.TryGetValue("2", out var a2) ? a2 : "";
+            TxtAlias3.Text = aliases.TryGetValue("3", out var a3) ? a3 : "";
+            TxtAlias4.Text = aliases.TryGetValue("4", out var a4) ? a4 : "";
+            TxtAlias5.Text = aliases.TryGetValue("5", out var a5) ? a5 : "";
+            TxtAlias6.Text = aliases.TryGetValue("6", out var a6) ? a6 : "";
+            TxtAlias7.Text = aliases.TryGetValue("7", out var a7) ? a7 : "";
+            TxtAlias8.Text = aliases.TryGetValue("8", out var a8) ? a8 : "";
+            TxtAlias9.Text = aliases.TryGetValue("9", out var a9) ? a9 : "";
+        }
+
+        private void TxtAlias_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is WpfTextBox tb && tb.Tag is string key)
+            {
+                var aliases = AppSettings.Instance.FolderAliases;
+                string value = tb.Text?.Trim() ?? "";
+                if (string.IsNullOrEmpty(value))
+                {
+                    if (aliases.ContainsKey(key)) aliases.Remove(key);
+                }
+                else
+                {
+                    aliases[key] = value;
+                }
+                AppSettings.Instance.Save();
             }
         }
 
@@ -737,6 +800,11 @@ namespace Lightspeed_wpf
                 int folderNum = folderButtons.IndexOf(btn);
                 if (folderNum >= 0)
                 {
+                    if (SettingsPanel.Visibility == Visibility.Visible)
+                    {
+                        SettingsPanel.Visibility = Visibility.Collapsed;
+                        BtnSettings.IsChecked = false;
+                    }
                     NavigateToFolder(folderNum);
                 }
             }
@@ -810,11 +878,56 @@ namespace Lightspeed_wpf
 
         private void BtnRefresh_Click(object sender, RoutedEventArgs e)
         {
+            ShowToast("已刷新");
             ClearFolderCache(currentFolder);
             NavigateToFolder(currentFolder);
         }
 
+        private System.Threading.CancellationTokenSource? _toastCts;
+
+        private async void ShowToast(string message)
+        {
+            if (ToastText == null || ToastBar == null) return;
+
+            _toastCts?.Cancel();
+            _toastCts = new System.Threading.CancellationTokenSource();
+            var token = _toastCts.Token;
+
+            ToastText.Text = message;
+            ToastBar.Visibility = Visibility.Visible;
+            ToastBar.Opacity = 0;
+
+            try
+            {
+                for (int i = 1; i <= 10; i++)
+                {
+                    if (token.IsCancellationRequested) return;
+                    ToastBar.Opacity = i / 10.0;
+                    await Task.Delay(20);
+                }
+                ToastBar.Opacity = 1;
+                await Task.Delay(1500, token);
+                for (int i = 10; i >= 0; i--)
+                {
+                    if (token.IsCancellationRequested) return;
+                    ToastBar.Opacity = i / 10.0;
+                    await Task.Delay(30);
+                }
+                if (!token.IsCancellationRequested)
+                {
+                    ToastBar.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (OperationCanceledException) { }
+        }
+
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
+        {
+            ToggleSettingsPanel();
+            ShowToast(SettingsPanel.Visibility == Visibility.Visible ? "已打开设置" : "已关闭设置");
+        }
+
+        private void ToggleSettingsPanel()
         {
             if (SettingsPanel.Visibility == Visibility.Collapsed)
             {
@@ -879,6 +992,7 @@ namespace Lightspeed_wpf
 
         private void BtnQuickStartAHK_Click(object sender, RoutedEventArgs e)
         {
+            ShowToast("AHK 已启动");
             CreateAHK(basePath);
             string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
             if (File.Exists(ahkPath))
@@ -1287,6 +1401,7 @@ return
 
         private void BtnOpenInExplorer_Click(object sender, RoutedEventArgs e)
         {
+            ShowToast("已在资源管理器中打开");
             string currentPath = Path.Combine(basePath, currentFolder.ToString());
             if (Directory.Exists(currentPath))
             {
@@ -1320,6 +1435,7 @@ return
 
         private void BtnListView_Click(object sender, RoutedEventArgs e)
         {
+            ShowToast("已切换到列表视图");
             isListView = true;
             FileListView.Visibility = Visibility.Visible;
             IconListView.Visibility = Visibility.Collapsed;
@@ -1331,6 +1447,7 @@ return
 
         private void BtnIconView_Click(object sender, RoutedEventArgs e)
         {
+            ShowToast("已切换到网格视图");
             isListView = false;
             FileListView.Visibility = Visibility.Collapsed;
             IconListView.Visibility = Visibility.Visible;
@@ -1696,8 +1813,15 @@ return
             }
             else if (e.Key == Key.OemComma)
             {
-                int prevFolder = currentFolder > 0 ? currentFolder - 1 : 9;
-                NavigateToFolder(prevFolder);
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                {
+                    ToggleSettingsPanel();
+                }
+                else
+                {
+                    int prevFolder = currentFolder > 0 ? currentFolder - 1 : 9;
+                    NavigateToFolder(prevFolder);
+                }
                 e.Handled = true;
             }
             else if (e.Key == Key.OemPeriod)
