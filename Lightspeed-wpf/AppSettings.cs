@@ -19,6 +19,10 @@ namespace Lightspeed_wpf
         public bool DisableHotkeyInFullscreen { get; set; } = true;
         public int ListIconSize { get; set; } = 30;
         public int IconIconSize { get; set; } = 60;
+        // 0=长条模式(默认), 1=宽胖模式, 2=自定义模式
+        public int WindowSizeMode { get; set; } = 0;
+        public int CustomWindowWidth { get; set; } = 500;
+        public int CustomWindowHeight { get; set; } = 600;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名
         public Dictionary<string, string> FolderAliases { get; set; } = new Dictionary<string, string>();
 

@@ -409,6 +409,63 @@ namespace Lightspeed_wpf
 
             // 加载 0~9 文件夹别名到设置面板的 TextBox
             LoadFolderAliasesToUI();
+
+            // 应用窗口大小模式
+            int windowMode = AppSettings.Instance.WindowSizeMode;
+            if (windowMode == 0)
+                RbWindowMode0.IsChecked = true;
+            else if (windowMode == 1)
+                RbWindowMode1.IsChecked = true;
+            else
+                RbWindowMode2.IsChecked = true;
+
+            TxtCustomWidth.Text = AppSettings.Instance.CustomWindowWidth.ToString();
+            TxtCustomHeight.Text = AppSettings.Instance.CustomWindowHeight.ToString();
+            ApplyWindowSize();
+        }
+
+        private void ApplyWindowSize()
+        {
+            int mode = AppSettings.Instance.WindowSizeMode;
+            if (mode == 0)
+            {
+                this.Width = 500;
+                this.Height = 800;
+            }
+            else if (mode == 1)
+            {
+                this.Width = 700;
+                this.Height = 500;
+            }
+            else
+            {
+                int w = AppSettings.Instance.CustomWindowWidth;
+                int h = AppSettings.Instance.CustomWindowHeight;
+                if (w > 0) this.Width = w;
+                if (h > 0) this.Height = h;
+            }
+        }
+
+        private void RbWindowMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
+            {
+                int mode = int.Parse(rb.Tag.ToString()!);
+                AppSettings.Instance.WindowSizeMode = mode;
+                AppSettings.Instance.Save();
+                ApplyWindowSize();
+                PanelCustomSize.Visibility = mode == 2 ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private void TxtCustomSize_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtCustomWidth.Text, out int w) && w > 0)
+                AppSettings.Instance.CustomWindowWidth = w;
+            if (int.TryParse(TxtCustomHeight.Text, out int h) && h > 0)
+                AppSettings.Instance.CustomWindowHeight = h;
+            AppSettings.Instance.Save();
+            ApplyWindowSize();
         }
 
         private void LoadFolderAliasesToUI()
@@ -1739,6 +1796,16 @@ return
             e.Handled = true;
         }
 
+        private bool IsInputFocused()
+        {
+            var focused = System.Windows.Input.FocusManager.GetFocusedElement(this);
+            if (focused is System.Windows.Controls.TextBox)
+                return true;
+            if (focused is System.Windows.Controls.PasswordBox)
+                return true;
+            return false;
+        }
+
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (isCapturingKey)
@@ -1838,12 +1905,16 @@ return
             }
             else if (e.Key >= Key.D0 && e.Key <= Key.D9)
             {
+                // 如果焦点在文本输入框内（设置面板的别名/W/H等），则不拦截
+                if (IsInputFocused()) { return; }
                 int num = e.Key - Key.D0;
                 NavigateToFolder(num);
                 e.Handled = true;
             }
             else if (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)
             {
+                // 如果焦点在文本输入框内（设置面板的别名/W/H等），则不拦截
+                if (IsInputFocused()) { return; }
                 int num = e.Key - Key.NumPad0;
                 NavigateToFolder(num);
                 e.Handled = true;
