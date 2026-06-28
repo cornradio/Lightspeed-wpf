@@ -116,8 +116,45 @@ namespace Lightspeed_wpf
         private const uint SHGFI_ICON = 0x100;
         private const uint SHGFI_SMALLICON = 0x1;
         private const uint SHGFI_LARGEICON = 0x0;
+        private const uint SHGFI_SYSICONINDEX = 0x4000;
+        private const int SHIL_JUMBO = 0x4;
+        private const uint ILD_TRANSPARENT = 0x0001;
         private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
         private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+
+        [DllImport("shell32.dll")]
+        private static extern int SHGetImageList(int iImageList, ref Guid riid, out IImageListNative ppv);
+
+        [ComImport]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        [Guid("43EB78CB-9080-4D08-8020-B5C3D0A25B7E")]
+        private interface IImageListNative
+        {
+            void Unused1(); void Unused2(); void Unused3(); void Unused4(); void Unused5();
+            void Unused6(); void Unused7(); void Unused8(); void Unused9(); void Unused10();
+            void Unused11();
+            [PreserveSig]
+            int GetIcon(int i, uint flags, out IntPtr picon);
+        }
+
+        private static IntPtr GetJumboIconHandle(int iconIndex)
+        {
+            try
+            {
+                var iid = new Guid("43EB78CB-9080-4D08-8020-B5C3D0A25B7E");
+                if (SHGetImageList(SHIL_JUMBO, ref iid, out var imageList) == 0 && imageList != null)
+                {
+                    try
+                    {
+                        if (imageList.GetIcon(iconIndex, ILD_TRANSPARENT, out var hIcon) == 0 && hIcon != IntPtr.Zero)
+                            return hIcon;
+                    }
+                    finally { Marshal.ReleaseComObject(imageList); }
+                }
+            }
+            catch { }
+            return IntPtr.Zero;
+        }
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
@@ -127,6 +164,55 @@ namespace Lightspeed_wpf
 
         [DllImport("imm32.dll")]
         private static extern bool ImmDisableIME(IntPtr hkl);
+
+        // --- XInput 手柄支持 ---
+        [DllImport("xinput1_4.dll", EntryPoint = "XInputGetState")]
+        private static extern int XInputGetState14(int dwUserIndex, ref XINPUT_STATE pState);
+
+        [DllImport("xinput9_1_0.dll", EntryPoint = "XInputGetState")]
+        private static extern int XInputGetState91(int dwUserIndex, ref XINPUT_STATE pState);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct XINPUT_STATE
+        {
+            public uint dwPacketNumber;
+            public ushort wButtons;
+            public byte bLeftTrigger;
+            public byte bRightTrigger;
+            public short sThumbLX;
+            public short sThumbLY;
+            public short sThumbRX;
+            public short sThumbRY;
+        }
+
+        private const ushort XINPUT_GAMEPAD_LEFT_SHOULDER = 0x0100;
+        private const ushort XINPUT_GAMEPAD_RIGHT_SHOULDER = 0x0200;
+        private const ushort XINPUT_GAMEPAD_DPAD_UP = 0x0001;
+        private const ushort XINPUT_GAMEPAD_DPAD_DOWN = 0x0002;
+        private const ushort XINPUT_GAMEPAD_DPAD_LEFT = 0x0004;
+        private const ushort XINPUT_GAMEPAD_DPAD_RIGHT = 0x0008;
+        private const ushort XINPUT_GAMEPAD_A = 0x1000;
+        private const ushort XINPUT_GAMEPAD_B = 0x2000;
+        private const ushort XINPUT_GAMEPAD_X = 0x4000;
+        private const short STICK_DEADZONE = 15000;
+
+        private DispatcherTimer? _gamepadTimer;
+        private ushort _lastGamepadButtons;
+        private DateTime _lbHoldStart = DateTime.MinValue;
+        private DateTime _rbHoldStart = DateTime.MinValue;
+        private DateTime _upHoldStart = DateTime.MinValue;
+        private DateTime _downHoldStart = DateTime.MinValue;
+        private DateTime _leftHoldStart = DateTime.MinValue;
+        private DateTime _rightHoldStart = DateTime.MinValue;
+        private DateTime _lastRepeatTime = DateTime.MinValue;
+        private DateTime _stickLastAction = DateTime.MinValue;
+        private bool _aHandled;
+        private bool _xHandled;
+        private bool _bHandled;
+        private ContextMenu? _activeMenu;
+        private int _menuIndex = -1;
+        private const int initialRepeatDelayMs = 200;
+        private const int repeatIntervalMs = 50;
 
         public MainWindow()
         {
@@ -291,6 +377,277 @@ namespace Lightspeed_wpf
             }
             NavigateToFolder(0);
             PreloadAllFolders();
+            InitializeGamepadPolling();
+        }
+
+        private int XInputGetState(int dwUserIndex, ref XINPUT_STATE pState)
+        {
+            try { return XInputGetState14(dwUserIndex, ref pState); }
+            catch { return XInputGetState91(dwUserIndex, ref pState); }
+        }
+
+        private void InitializeGamepadPolling()
+        {
+            try
+            {
+                XINPUT_STATE testState = new XINPUT_STATE();
+                XInputGetState(0, ref testState);
+            }
+            catch { return; } // XInput DLL 不可用
+
+            _gamepadTimer = new DispatcherTimer();
+            _gamepadTimer.Interval = TimeSpan.FromMilliseconds(100);
+            _gamepadTimer.Tick += GamepadTimer_Tick;
+            _gamepadTimer.Start();
+        }
+
+        private void GamepadTimer_Tick(object? sender, EventArgs e)
+        {
+            if (Visibility != Visibility.Visible) return;
+            if (SettingsPanel.Visibility == Visibility.Visible) return;
+
+            XINPUT_STATE state = new XINPUT_STATE();
+            int result = XInputGetState(0, ref state);
+            if (result != 0) return;
+
+            ushort cur = state.wButtons;
+            ushort pressed = (ushort)(cur & ~_lastGamepadButtons);
+            ushort released = (ushort)(~cur & _lastGamepadButtons);
+            _lastGamepadButtons = cur;
+
+            DateTime now = DateTime.Now;
+
+            // --- 右键菜单打开时: 手柄控制菜单 ---
+            if (_activeMenu != null && _activeMenu.IsOpen)
+            {
+                var menuItems = _activeMenu.Items.OfType<MenuItem>().ToList();
+
+                if (menuItems.Count == 0) return;
+
+                // D-pad 上下: 长按连续
+                if ((pressed & XINPUT_GAMEPAD_DPAD_UP) != 0)
+                {
+                    if (_menuIndex <= 0) _menuIndex = menuItems.Count - 1; else _menuIndex--;
+                    _upHoldStart = now; _lastRepeatTime = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+                if ((cur & XINPUT_GAMEPAD_DPAD_UP) != 0 && (now - _upHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+                {
+                    if (_menuIndex <= 0) _menuIndex = menuItems.Count - 1; else _menuIndex--;
+                    _lastRepeatTime = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+
+                if ((pressed & XINPUT_GAMEPAD_DPAD_DOWN) != 0)
+                {
+                    if (_menuIndex >= menuItems.Count - 1) _menuIndex = 0; else _menuIndex++;
+                    _downHoldStart = now; _lastRepeatTime = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+                if ((cur & XINPUT_GAMEPAD_DPAD_DOWN) != 0 && (now - _downHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+                {
+                    if (_menuIndex >= menuItems.Count - 1) _menuIndex = 0; else _menuIndex++;
+                    _lastRepeatTime = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+
+                // 摇杆上下: 80ms cooldown
+                bool stickUp = state.sThumbLY > STICK_DEADZONE && (now - _stickLastAction).TotalMilliseconds >= 80;
+                bool stickDown = state.sThumbLY < -STICK_DEADZONE && (now - _stickLastAction).TotalMilliseconds >= 80;
+
+                if (stickUp)
+                {
+                    if (_menuIndex <= 0) _menuIndex = menuItems.Count - 1; else _menuIndex--;
+                    _stickLastAction = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+                if (stickDown)
+                {
+                    if (_menuIndex >= menuItems.Count - 1) _menuIndex = 0; else _menuIndex++;
+                    _stickLastAction = now;
+                    HighlightMenuItem(menuItems);
+                    return;
+                }
+
+                // A 键: 执行当前高亮项
+                if ((pressed & XINPUT_GAMEPAD_A) != 0) _aHandled = false;
+                if ((cur & XINPUT_GAMEPAD_A) != 0 && !_aHandled)
+                {
+                    _aHandled = true;
+                    if (_menuIndex >= 0 && _menuIndex < menuItems.Count)
+                    {
+                        var menuItem = menuItems[_menuIndex];
+                        _activeMenu.IsOpen = false;
+                        _activeMenu = null;
+                        _menuIndex = -1;
+                        menuItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                    }
+                    return;
+                }
+                if ((released & XINPUT_GAMEPAD_A) != 0) _aHandled = false;
+
+                // B / X 键: 关闭菜单
+                if ((pressed & XINPUT_GAMEPAD_B) != 0) _bHandled = false;
+                if ((pressed & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
+                if (((cur & XINPUT_GAMEPAD_B) != 0 && !_bHandled) ||
+                    ((cur & XINPUT_GAMEPAD_X) != 0 && !_xHandled))
+                {
+                    _bHandled = true; _xHandled = true;
+                    _activeMenu.IsOpen = false;
+                    _activeMenu = null;
+                    _menuIndex = -1;
+                    return;
+                }
+                if ((released & XINPUT_GAMEPAD_B) != 0) _bHandled = false;
+                if ((released & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
+
+                return; // 菜单打开时不处理其他输入
+            }
+            else
+            {
+                _activeMenu = null;
+                _menuIndex = -1;
+            }
+
+            // --- LB / RB: 文件夹切换 (长按连续) ---
+            if ((pressed & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0)
+            { NavigateToFolder(currentFolder > 0 ? currentFolder - 1 : 9); _lbHoldStart = now; _lastRepeatTime = now; }
+            else if ((cur & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0 && (now - _lbHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { NavigateToFolder(currentFolder > 0 ? currentFolder - 1 : 9); _lastRepeatTime = now; }
+            if ((released & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0) _lbHoldStart = DateTime.MinValue;
+
+            if ((pressed & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0)
+            { NavigateToFolder(currentFolder < 9 ? currentFolder + 1 : 0); _rbHoldStart = now; _lastRepeatTime = now; }
+            else if ((cur & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0 && (now - _rbHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { NavigateToFolder(currentFolder < 9 ? currentFolder + 1 : 0); _lastRepeatTime = now; }
+            if ((released & XINPUT_GAMEPAD_RIGHT_SHOULDER) != 0) _rbHoldStart = DateTime.MinValue;
+
+            // --- D-pad: 项目导航 (长按连续) ---
+            if ((pressed & XINPUT_GAMEPAD_DPAD_UP) != 0)
+            { NavigateItems(-1, true); _upHoldStart = now; _lastRepeatTime = now; }
+            else if ((cur & XINPUT_GAMEPAD_DPAD_UP) != 0 && (now - _upHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { NavigateItems(-1, true); _lastRepeatTime = now; }
+            if ((released & XINPUT_GAMEPAD_DPAD_UP) != 0) _upHoldStart = DateTime.MinValue;
+
+            if ((pressed & XINPUT_GAMEPAD_DPAD_DOWN) != 0)
+            { NavigateItems(1, true); _downHoldStart = now; _lastRepeatTime = now; }
+            else if ((cur & XINPUT_GAMEPAD_DPAD_DOWN) != 0 && (now - _downHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { NavigateItems(1, true); _lastRepeatTime = now; }
+            if ((released & XINPUT_GAMEPAD_DPAD_DOWN) != 0) _downHoldStart = DateTime.MinValue;
+
+            if ((pressed & XINPUT_GAMEPAD_DPAD_LEFT) != 0)
+            { if (!isListView) { NavigateItems(-1); _leftHoldStart = now; _lastRepeatTime = now; } }
+            else if ((cur & XINPUT_GAMEPAD_DPAD_LEFT) != 0 && (now - _leftHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { if (!isListView) { NavigateItems(-1); _lastRepeatTime = now; } }
+            if ((released & XINPUT_GAMEPAD_DPAD_LEFT) != 0) _leftHoldStart = DateTime.MinValue;
+
+            if ((pressed & XINPUT_GAMEPAD_DPAD_RIGHT) != 0)
+            { if (!isListView) { NavigateItems(1); _rightHoldStart = now; _lastRepeatTime = now; } }
+            else if ((cur & XINPUT_GAMEPAD_DPAD_RIGHT) != 0 && (now - _rightHoldStart).TotalMilliseconds >= initialRepeatDelayMs && (now - _lastRepeatTime).TotalMilliseconds >= repeatIntervalMs)
+            { if (!isListView) { NavigateItems(1); _lastRepeatTime = now; } }
+            if ((released & XINPUT_GAMEPAD_DPAD_RIGHT) != 0) _rightHoldStart = DateTime.MinValue;
+
+            // --- 左摇杆: 项目导航 (80ms cooldown) ---
+            if ((now - _stickLastAction).TotalMilliseconds >= 80)
+            {
+                if (state.sThumbLY > STICK_DEADZONE) { NavigateItems(-1, true); _stickLastAction = now; }
+                else if (state.sThumbLY < -STICK_DEADZONE) { NavigateItems(1, true); _stickLastAction = now; }
+                else if (!isListView)
+                {
+                    if (state.sThumbLX < -STICK_DEADZONE) { NavigateItems(-1); _stickLastAction = now; }
+                    else if (state.sThumbLX > STICK_DEADZONE) { NavigateItems(1); _stickLastAction = now; }
+                }
+            }
+
+            // --- A 键: 打开 ---
+            if ((pressed & XINPUT_GAMEPAD_A) != 0) _aHandled = false;
+            if ((cur & XINPUT_GAMEPAD_A) != 0 && !_aHandled) { GamepadOpenSelectedItem(); _aHandled = true; }
+            if ((released & XINPUT_GAMEPAD_A) != 0) _aHandled = false;
+
+            // --- X 键: 右键菜单 ---
+            if ((pressed & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
+            if ((cur & XINPUT_GAMEPAD_X) != 0 && !_xHandled) { GamepadShowContextMenu(); _xHandled = true; }
+            if ((released & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
+        }
+
+        private void NavigateItems(int delta, bool vertical = false)
+        {
+            if (isListView)
+            {
+                if (FileListView.Items.Count == 0) return;
+                int idx = FileListView.SelectedIndex;
+                if (idx < 0) idx = delta > 0 ? -1 : FileListView.Items.Count;
+                int newIdx = Math.Clamp(idx + delta, 0, FileListView.Items.Count - 1);
+                FileListView.SelectedIndex = newIdx;
+                FileListView.ScrollIntoView(FileListView.SelectedItem);
+            }
+            else
+            {
+                if (IconListView.Items.Count == 0) return;
+                int idx = IconListView.SelectedIndex;
+                if (idx < 0) idx = delta > 0 ? -1 : IconListView.Items.Count;
+
+                if (vertical)
+                {
+                    int cols = GetIconViewColumns();
+                    if (delta < 0)
+                        idx = idx >= cols ? idx - cols : 0;
+                    else
+                        idx = Math.Min(idx + cols, IconListView.Items.Count - 1);
+                }
+                else
+                {
+                    idx = Math.Clamp(idx + delta, 0, IconListView.Items.Count - 1);
+                }
+
+                IconListView.SelectedIndex = idx;
+                IconListView.ScrollIntoView(IconListView.SelectedItem);
+            }
+        }
+
+        private int GetIconViewColumns()
+        {
+            try
+            {
+                double panelWidth = IconListView.ActualWidth;
+                if (panelWidth <= 0) return 1;
+
+                var scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(IconListView);
+                if (scrollViewer != null)
+                    panelWidth = scrollViewer.ViewportWidth > 0 ? scrollViewer.ViewportWidth : panelWidth;
+
+                double itemWidth = 96; // MinWidth(90) + Margin(3*2)
+                int cols = Math.Max(1, (int)(panelWidth / itemWidth));
+                return cols;
+            }
+            catch { return 1; }
+        }
+
+        private void GamepadOpenSelectedItem()
+        {
+            if (isListView && FileListView.SelectedItem is FileItem li)
+                OpenItem(li);
+            else if (!isListView && IconListView.SelectedItem is FileItem ii)
+                OpenItem(ii);
+        }
+
+        private void GamepadShowContextMenu()
+        {
+            if (isListView && FileListView.SelectedItem is FileItem li)
+            {
+                var container = FileListView.ItemContainerGenerator.ContainerFromItem(li) as FrameworkElement;
+                ShowContextMenu(li, container ?? FileListView, container != null);
+            }
+            else if (!isListView && IconListView.SelectedItem is FileItem ii)
+            {
+                var container = IconListView.ItemContainerGenerator.ContainerFromItem(ii) as FrameworkElement;
+                ShowContextMenu(ii, container ?? IconListView, container != null);
+            }
         }
 
         private void PreloadAllFolders()
@@ -498,6 +855,7 @@ namespace Lightspeed_wpf
                     aliases[key] = value;
                 }
                 AppSettings.Instance.Save();
+                UpdateFolderNameDisplay();
             }
         }
 
@@ -681,6 +1039,22 @@ namespace Lightspeed_wpf
             }
 
             UpdateFolderButtonSelection(folderNum);
+            UpdateFolderNameDisplay();
+
+            // 自动选中第一项, 方便手柄操作
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (isListView && FileListView.Items.Count > 0)
+                {
+                    FileListView.SelectedIndex = 0;
+                    FileListView.ScrollIntoView(FileListView.Items[0]);
+                }
+                else if (!isListView && IconListView.Items.Count > 0)
+                {
+                    IconListView.SelectedIndex = 0;
+                    IconListView.ScrollIntoView(IconListView.Items[0]);
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
         private FileItem CreateFileItem(string path, bool isDirectory, bool isIconMode)
@@ -724,56 +1098,69 @@ namespace Lightspeed_wpf
                 return iconCache[cacheKey];
             }
 
-            SHFILEINFO shfi = new SHFILEINFO();
-            uint flags = SHGFI_ICON | SHGFI_LARGEICON;
-            uint attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-
-            IntPtr hImg = SHGetFileInfo(path, attributes, ref shfi, (uint)Marshal.SizeOf(shfi), flags);
-
-            if (shfi.hIcon != IntPtr.Zero)
+            try
             {
-                try
+                // 1. 获取系统图标索引
+                SHFILEINFO shfi = new SHFILEINFO();
+                uint flags = SHGFI_SYSICONINDEX;
+                uint attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+                SHGetFileInfo(path, attributes, ref shfi, (uint)Marshal.SizeOf(shfi), flags);
+
+                // 2. 优先从 Jumbo 图像列表获取 256x256 高清图标
+                IntPtr hIcon = GetJumboIconHandle(shfi.iIcon);
+                bool isJumbo = hIcon != IntPtr.Zero;
+
+                // 3. 回退到普通大图标
+                if (!isJumbo)
                 {
+                    SHFILEINFO shfi2 = new SHFILEINFO();
+                    SHGetFileInfo(path, attributes, ref shfi2, (uint)Marshal.SizeOf(shfi2), SHGFI_ICON | SHGFI_LARGEICON);
+                    hIcon = shfi2.hIcon;
+                }
+
+                if (hIcon != IntPtr.Zero)
+                {
+                    var managedIcon = System.Drawing.Icon.FromHandle(hIcon);
+                    int srcSize = Math.Min(managedIcon.Width, managedIcon.Height);
+                    int drawSize = Math.Min(size, Math.Max(srcSize, 16));
+                    int offset = (size - drawSize) / 2;
+                    ImageSource? result = null;
+
                     using (var bitmap = new Bitmap(size, size))
                     using (var graphics = Graphics.FromImage(bitmap))
                     {
                         graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                        graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
                         graphics.Clear(System.Drawing.Color.Transparent);
-                        IntPtr iconHandle = shfi.hIcon;
-                        using (var icon = System.Drawing.Icon.FromHandle(iconHandle))
-                        {
-                            int iconSize = Math.Min(icon.Width, icon.Height);
-                            int drawSize = Math.Min(size, Math.Max(iconSize, 16));
-                            int x = (size - drawSize) / 2;
-                            int y = (size - drawSize) / 2;
-                            graphics.DrawIcon(icon, new Rectangle(x, y, drawSize, drawSize));
-                        }
+                        graphics.DrawIcon(managedIcon, new Rectangle(offset, offset, drawSize, drawSize));
+
                         var hBitmap = bitmap.GetHbitmap(System.Drawing.Color.FromArgb(0, 0, 0, 0));
                         try
                         {
-                            ImageSource imageSource = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                                hBitmap,
-                                IntPtr.Zero,
-                                Int32Rect.Empty,
-                                BitmapSizeOptions.FromEmptyOptions());
-                            DeleteObject(hBitmap);
-                            DestroyIcon(shfi.hIcon);
-                            iconCache[cacheKey] = imageSource;
-                            return imageSource;
+                            result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
+                                hBitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                            result.Freeze();
                         }
                         finally
                         {
                             DeleteObject(hBitmap);
                         }
                     }
-                }
-                catch
-                {
-                    return CreateDefaultIcon(isDirectory, size);
+                    DestroyIcon(hIcon);
+
+                    if (result != null)
+                    {
+                        iconCache[cacheKey] = result;
+                        return result;
+                    }
                 }
             }
-            return CreateDefaultIcon(isDirectory, size);
+            catch { }
+
+            var defaultIcon = CreateDefaultIcon(isDirectory, size);
+            iconCache[cacheKey] = defaultIcon;
+            return defaultIcon;
         }
 
         private ImageSource CreateDefaultIcon(bool isFolder, int size)
@@ -807,6 +1194,19 @@ namespace Lightspeed_wpf
                 folderButtons[i].Foreground = (i == selectedFolder)
                     ? new SolidColorBrush(Colors.White)
                     : new SolidColorBrush(Colors.White);
+            }
+        }
+
+        private void UpdateFolderNameDisplay()
+        {
+            string alias = AppSettings.Instance.FolderAliases.TryGetValue(currentFolder.ToString(), out var a) ? a : "";
+            if (!string.IsNullOrWhiteSpace(alias))
+            {
+                TxtFolderName.Text = $"{currentFolder}: {alias}";
+            }
+            else
+            {
+                TxtFolderName.Text = $"文件夹 {currentFolder}";
             }
         }
 
@@ -1538,11 +1938,11 @@ return
             e.Handled = true;
         }
 
-        private void ShowContextMenu(FileItem item, FrameworkElement target)
+        private void ShowContextMenu(FileItem item, FrameworkElement target, bool atItem = false)
         {
             ContextMenu menu = new ContextMenu();
             menu.PlacementTarget = target;
-            menu.Placement = PlacementMode.Mouse;
+            menu.Placement = atItem ? PlacementMode.Bottom : PlacementMode.Mouse;
 
             MenuItem openItem = new MenuItem { Header = "打开" };
             openItem.Click += (s, args) => OpenItem(item);
@@ -1584,7 +1984,43 @@ return
             copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
             menu.Items.Add(copyItem);
 
+            // 手柄菜单追踪
+            menu.Closed += (s, args) => { _activeMenu = null; _menuIndex = -1; };
+            _activeMenu = menu;
+            _menuIndex = 0;
             menu.IsOpen = true;
+
+            // 自动高亮第一项
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var items = menu.Items.OfType<MenuItem>().ToList();
+                HighlightMenuItem(items);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void HighlightMenuItem(List<MenuItem> items)
+        {
+            if (_activeMenu == null) return;
+            // 清除所有高亮
+            foreach (var obj in _activeMenu.Items)
+            {
+                if (obj is MenuItem mi)
+                {
+                    mi.Background = System.Windows.Media.Brushes.Transparent;
+                    mi.Foreground = System.Windows.Media.Brushes.White;
+                }
+            }
+            // 高亮当前项
+            if (_menuIndex >= 0 && _menuIndex < items.Count)
+            {
+                var highlighted = items[_menuIndex];
+                if (highlighted != null)
+                {
+                    highlighted.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3));
+                    highlighted.Foreground = System.Windows.Media.Brushes.White;
+                    highlighted.Focus();
+                }
+            }
         }
 
         private void RenameItem(FileItem item)
@@ -2067,6 +2503,7 @@ return
 
         public void ForceClose()
         {
+            _gamepadTimer?.Stop();
             System.Environment.Exit(0);
         }
     }

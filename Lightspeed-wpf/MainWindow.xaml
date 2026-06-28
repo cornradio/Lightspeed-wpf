@@ -47,28 +47,61 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SideButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="37"/>
-            <Setter Property="Margin" Value="2,2"/>
-            <Setter Property="Padding" Value="15,0"/>
+        <Style x:Key="TitleBarFolderButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Margin" Value="1"/>
             <Setter Property="Background" Value="#3D3D3D"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="3" BorderThickness="1" BorderBrush="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#569CD3"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#4D4D4D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SideButtonStyle" TargetType="Button">
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#999999"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#2A2A2A"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#5D5D5D"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
@@ -127,30 +160,36 @@
         </Style>
 
         <Style x:Key="ViewToggleButtonStyle" TargetType="ToggleButton">
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="35"/>
-            <Setter Property="Margin" Value="0,3,5,3"/>
-            <Setter Property="Background" Value="#3D3D3D"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#999999"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                            <Grid>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Border x:Name="underline" Height="2" VerticalAlignment="Bottom" Background="#569CD3" CornerRadius="1" Margin="6,0" Visibility="Collapsed"/>
+                            </Grid>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#2A2A2A"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="underline" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="#569CD3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#5D5D5D"/>
-                </Trigger>
-                <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="#3A5A7A"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
         <Style TargetType="ListViewItem">
@@ -344,42 +383,40 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Background="#1E1E1E" x:Name="TitleBarGrid">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            
-            <TextBlock Grid.Column="0" Text="Lightspeed" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Bold"/>
-            
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
+
+            <TextBlock Grid.Column="0" Text="Lightspeed" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Bold" FontSize="12"/>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                <Button x:Name="Btn0" Content="0" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn1" Content="1" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn2" Content="2" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn3" Content="3" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn4" Content="4" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn5" Content="5" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn6" Content="6" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn7" Content="7" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn8" Content="8" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                <Button x:Name="Btn9" Content="9" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
                 <Button Content="⚊" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
                 <Button Content="🔳" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
                 <Button Content="✖" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
             </StackPanel>
         </Grid>
 
-        <Border Grid.Row="1" Background="#2D2D2D" Padding="10">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button x:Name="Btn0" Content="0" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn1" Content="1" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn2" Content="2" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn3" Content="3" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn4" Content="4" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn5" Content="5" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn6" Content="6" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn7" Content="7" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn8" Content="8" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn9" Content="9" Style="{StaticResource FolderButtonStyle}" Click="FolderButton_Click"/>
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Row="2" AllowDrop="True" Drop="Grid_Drop" DragOver="Grid_DragOver">
+        <Grid Grid.Row="1" AllowDrop="True" Drop="Grid_Drop" DragOver="Grid_DragOver">
             <ListView x:Name="FileListView" 
                       Background="#1E1E1E" 
                       Foreground="White"
@@ -421,8 +458,7 @@
                 </ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource IconListBoxItem}">
-                        <Setter Property="Width" Value="90"/>
-                        <Setter Property="Height" Value="100"/>
+                        <Setter Property="MinWidth" Value="90"/>
                         <Setter Property="Margin" Value="3"/>
                     </Style>
                 </ListBox.ItemContainerStyle>
@@ -594,9 +630,10 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="3" Background="#252525" Padding="10">
+        <Border Grid.Row="2" Background="#252525" Padding="6,2">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -607,21 +644,26 @@
                     <Button Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="Generate and Start AHK (No Dialog)"/>
                 </StackPanel>
                 
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <TextBlock x:Name="TxtFolderName" Grid.Column="1"
+                           Text="文件夹 0" Foreground="#888888" FontSize="12"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <ToggleButton x:Name="BtnListView" Content="L" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
                     <ToggleButton x:Name="BtnIconView" Content="G" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
-                    <ToggleButton x:Name="BtnSettings" Content="⋮" Click="BtnSettings_Click" Height="37" Margin="2,2" Background="#3D3D3D" Foreground="White" BorderThickness="0">
+                    <ToggleButton x:Name="BtnSettings" Content="⋮" Click="BtnSettings_Click" Height="26" Width="30" Margin="2,0" Background="Transparent" Foreground="#999999" BorderThickness="0" FontSize="16">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
-                                <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Padding="15,0">
+                                <Border x:Name="border" Background="Transparent" CornerRadius="4">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
+                                        <Setter TargetName="border" Property="Background" Value="#2A2A2A"/>
+                                        <Setter Property="Foreground" Value="White"/>
                                     </Trigger>
                                     <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#569CD3"/>
+                                        <Setter Property="Foreground" Value="#569CD3"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -655,7 +697,7 @@
         </Popup>
 
         <!-- Toast 通知:浮在底部栏之上, 不拦截鼠标事件 -->
-        <Grid Grid.Row="0" Grid.RowSpan="4"
+        <Grid Grid.Row="0" Grid.RowSpan="3"
               HorizontalAlignment="Center"
               VerticalAlignment="Bottom"
               Margin="0,0,0,70"
