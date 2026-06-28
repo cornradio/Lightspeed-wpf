@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.IO;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -185,15 +186,18 @@ namespace Lightspeed_wpf
             public short sThumbRY;
         }
 
-        private const ushort XINPUT_GAMEPAD_LEFT_SHOULDER = 0x0100;
-        private const ushort XINPUT_GAMEPAD_RIGHT_SHOULDER = 0x0200;
         private const ushort XINPUT_GAMEPAD_DPAD_UP = 0x0001;
         private const ushort XINPUT_GAMEPAD_DPAD_DOWN = 0x0002;
         private const ushort XINPUT_GAMEPAD_DPAD_LEFT = 0x0004;
         private const ushort XINPUT_GAMEPAD_DPAD_RIGHT = 0x0008;
+        private const ushort XINPUT_GAMEPAD_START = 0x0010;
+        private const ushort XINPUT_GAMEPAD_BACK = 0x0020;
         private const ushort XINPUT_GAMEPAD_A = 0x1000;
         private const ushort XINPUT_GAMEPAD_B = 0x2000;
         private const ushort XINPUT_GAMEPAD_X = 0x4000;
+        private const ushort XINPUT_GAMEPAD_Y = 0x8000;
+        private const ushort XINPUT_GAMEPAD_LEFT_SHOULDER = 0x0100;
+        private const ushort XINPUT_GAMEPAD_RIGHT_SHOULDER = 0x0200;
         private const short STICK_DEADZONE = 15000;
 
         private DispatcherTimer? _gamepadTimer;
@@ -209,8 +213,13 @@ namespace Lightspeed_wpf
         private bool _aHandled;
         private bool _xHandled;
         private bool _bHandled;
+        private bool _backHandled;
+        private bool _startHandled;
         private ContextMenu? _activeMenu;
         private int _menuIndex = -1;
+        private ushort _gamepadHotkeyButtons;
+        private bool _gamepadHotkeyTriggered;
+        private bool _capturingGamepadHotkey;
         private const int initialRepeatDelayMs = 200;
         private const int repeatIntervalMs = 50;
 
@@ -361,6 +370,18 @@ namespace Lightspeed_wpf
             Activate();
         }
 
+        private void ToggleVisibility()
+        {
+            if (Visibility == Visibility.Visible && IsActive)
+            {
+                Hide();
+            }
+            else
+            {
+                ShowFromTray();
+            }
+        }
+
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             windowHandle = new WindowInteropHelper(this).Handle;
@@ -403,9 +424,6 @@ namespace Lightspeed_wpf
 
         private void GamepadTimer_Tick(object? sender, EventArgs e)
         {
-            if (Visibility != Visibility.Visible) return;
-            if (SettingsPanel.Visibility == Visibility.Visible) return;
-
             XINPUT_STATE state = new XINPUT_STATE();
             int result = XInputGetState(0, ref state);
             if (result != 0) return;
@@ -416,6 +434,59 @@ namespace Lightspeed_wpf
             _lastGamepadButtons = cur;
 
             DateTime now = DateTime.Now;
+
+            // Build combined mask including LT/RT as virtual button bits
+            const ushort VIRTUAL_LT = 0x0040;
+            const ushort VIRTUAL_RT = 0x0080;
+            ushort combined = cur;
+            if (state.bLeftTrigger > 100) combined |= VIRTUAL_LT;
+            if (state.bRightTrigger > 100) combined |= VIRTUAL_RT;
+
+            // --- 手柄快捷键捕获模式 ---
+            if (_capturingGamepadHotkey && combined != 0)
+            {
+                if (BitOperations.PopCount(combined) >= 3)
+                {
+                    _gamepadHotkeyButtons = combined;
+                    AppSettings.Instance.GamepadHotkeyButtons = combined;
+                    AppSettings.Instance.Save();
+                    _capturingGamepadHotkey = false;
+                    Dispatcher.BeginInvoke(new Action(UpdateGamepadHotkeyDisplay));
+                }
+                return;
+            }
+
+            // --- 手柄快捷键: 召唤/隐藏 (后台也能响应) ---
+            if (_gamepadHotkeyButtons != 0 && (combined & _gamepadHotkeyButtons) == _gamepadHotkeyButtons)
+            {
+                if (!_gamepadHotkeyTriggered)
+                {
+                    _gamepadHotkeyTriggered = true;
+                    ToggleVisibility();
+                }
+            }
+            else
+            {
+                _gamepadHotkeyTriggered = false;
+            }
+
+            if (Visibility != Visibility.Visible) return;
+
+            // --- Back (Select) 键: 关闭设置面板 ---
+            if (SettingsPanel.Visibility == Visibility.Visible)
+            {
+                if ((pressed & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
+                if ((cur & XINPUT_GAMEPAD_BACK) != 0 && !_backHandled)
+                {
+                    BtnSettings_Click(this, new RoutedEventArgs());
+                    _backHandled = true;
+                }
+                if ((released & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
+                return;
+            }
+
+            // 窗口不在前台时不响应其他手柄操作
+            if (!IsActive) return;
 
             // --- 右键菜单打开时: 手柄控制菜单 ---
             if (_activeMenu != null && _activeMenu.IsOpen)
@@ -573,6 +644,16 @@ namespace Lightspeed_wpf
             if ((pressed & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
             if ((cur & XINPUT_GAMEPAD_X) != 0 && !_xHandled) { GamepadShowContextMenu(); _xHandled = true; }
             if ((released & XINPUT_GAMEPAD_X) != 0) _xHandled = false;
+
+            // --- Back (Select) 键: 打开/关闭设置 ---
+            if ((pressed & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
+            if ((cur & XINPUT_GAMEPAD_BACK) != 0 && !_backHandled) { BtnSettings_Click(this, new RoutedEventArgs()); _backHandled = true; }
+            if ((released & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
+
+            // --- Start 键: 在文件资源管理器中打开 ---
+            if ((pressed & XINPUT_GAMEPAD_START) != 0) _startHandled = false;
+            if ((cur & XINPUT_GAMEPAD_START) != 0 && !_startHandled) { BtnOpenInExplorer_Click(this, new RoutedEventArgs()); _startHandled = true; }
+            if ((released & XINPUT_GAMEPAD_START) != 0) _startHandled = false;
         }
 
         private void NavigateItems(int delta, bool vertical = false)
@@ -750,6 +831,9 @@ namespace Lightspeed_wpf
             
             RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
 
+            _gamepadHotkeyButtons = (ushort)AppSettings.Instance.GamepadHotkeyButtons;
+            UpdateGamepadHotkeyDisplay();
+
             if (AppSettings.Instance.AutoStartAHK)
             {
                 CreateAHK(basePath);
@@ -891,6 +975,58 @@ namespace Lightspeed_wpf
                 Key.F9 => "F9", Key.F10 => "F10", Key.F11 => "F11", Key.F12 => "F12",
                 _ => key.ToString()
             };
+        }
+
+        private void UpdateGamepadHotkeyDisplay()
+        {
+            TxtGamepadHotkey.Text = GamepadButtonsToString(_gamepadHotkeyButtons);
+        }
+
+        private string GamepadButtonsToString(ushort buttons)
+        {
+            if (buttons == 0) return "未设置";
+            var parts = new List<string>();
+            if ((buttons & 0x0001) != 0) parts.Add("↑");
+            if ((buttons & 0x0002) != 0) parts.Add("↓");
+            if ((buttons & 0x0004) != 0) parts.Add("←");
+            if ((buttons & 0x0008) != 0) parts.Add("→");
+            if ((buttons & 0x0010) != 0) parts.Add("Start");
+            if ((buttons & 0x0020) != 0) parts.Add("Back");
+            if ((buttons & 0x0040) != 0) parts.Add("LT");
+            if ((buttons & 0x0080) != 0) parts.Add("RT");
+            if ((buttons & 0x0100) != 0) parts.Add("LB");
+            if ((buttons & 0x0200) != 0) parts.Add("RB");
+            if ((buttons & 0x1000) != 0) parts.Add("A");
+            if ((buttons & 0x2000) != 0) parts.Add("B");
+            if ((buttons & 0x4000) != 0) parts.Add("X");
+            if ((buttons & 0x8000) != 0) parts.Add("Y");
+            return parts.Count > 0 ? string.Join("+", parts) : "未设置";
+        }
+
+        private void BtnCaptureGamepadHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            _capturingGamepadHotkey = true;
+            _gamepadHotkeyTriggered = false;
+            TxtGamepadHotkey.Text = "按下组合键 (至少3键)...";
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            timer.Tick += (s, args) =>
+            {
+                timer.Stop();
+                if (_capturingGamepadHotkey)
+                {
+                    _capturingGamepadHotkey = false;
+                    UpdateGamepadHotkeyDisplay();
+                }
+            };
+            timer.Start();
+        }
+
+        private void BtnClearGamepadHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            _gamepadHotkeyButtons = 0;
+            AppSettings.Instance.GamepadHotkeyButtons = 0;
+            AppSettings.Instance.Save();
+            UpdateGamepadHotkeyDisplay();
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -1200,14 +1336,7 @@ namespace Lightspeed_wpf
         private void UpdateFolderNameDisplay()
         {
             string alias = AppSettings.Instance.FolderAliases.TryGetValue(currentFolder.ToString(), out var a) ? a : "";
-            if (!string.IsNullOrWhiteSpace(alias))
-            {
-                TxtFolderName.Text = $"{currentFolder}: {alias}";
-            }
-            else
-            {
-                TxtFolderName.Text = $"文件夹 {currentFolder}";
-            }
+            TxtFolderName.Text = string.IsNullOrWhiteSpace(alias) ? "" : alias;
         }
 
         private void ClearFolderCache(int folderNum)
@@ -2256,6 +2385,18 @@ return
                 return;
             }
 
+            // Shift + 左右: 切换文件夹
+            if ((e.Key == Key.Left || e.Key == Key.Right) &&
+                (Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)))
+            {
+                if (e.Key == Key.Left)
+                    NavigateToFolder(currentFolder > 0 ? currentFolder - 1 : 9);
+                else
+                    NavigateToFolder(currentFolder < 9 ? currentFolder + 1 : 0);
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key == Key.Delete)
             {
                 if (isListView && FileListView.SelectedItem is FileItem fileItem2)
@@ -2297,22 +2438,40 @@ return
             }
             else if (e.Key == Key.Down || e.Key == Key.Up || e.Key == Key.Left || e.Key == Key.Right)
             {
-                if (isListView && FileListView.Items.Count > 0)
+                if (isListView)
                 {
-                    if (FileListView.SelectedItem == null || !FileListView.Items.Contains(FileListView.SelectedItem))
-                    {
-                        FileListView.SelectedItem = FileListView.Items[0];
-                        FileListView.ScrollIntoView(FileListView.SelectedItem);
-                    }
+                    if (FileListView.Items.Count == 0) { e.Handled = true; return; }
+                    int idx = FileListView.SelectedIndex;
+                    if (idx < 0) idx = (e.Key == Key.Down || e.Key == Key.Right) ? -1 : FileListView.Items.Count;
+                    int delta = (e.Key == Key.Down || e.Key == Key.Right) ? 1 : -1;
+                    int newIdx = Math.Clamp(idx + delta, 0, FileListView.Items.Count - 1);
+                    FileListView.SelectedIndex = newIdx;
+                    FileListView.ScrollIntoView(FileListView.SelectedItem);
                 }
-                else if (!isListView && IconListView.Items.Count > 0)
+                else
                 {
-                    if (IconListView.SelectedItem == null || !IconListView.Items.Contains(IconListView.SelectedItem))
+                    if (IconListView.Items.Count == 0) { e.Handled = true; return; }
+                    int idx = IconListView.SelectedIndex;
+                    if (idx < 0) idx = (e.Key == Key.Down || e.Key == Key.Right) ? -1 : IconListView.Items.Count;
+
+                    if (e.Key == Key.Up || e.Key == Key.Down)
                     {
-                        IconListView.SelectedItem = IconListView.Items[0];
-                        IconListView.ScrollIntoView(IconListView.SelectedItem);
+                        int cols = GetIconViewColumns();
+                        if (e.Key == Key.Up)
+                            idx = idx >= cols ? idx - cols : 0;
+                        else
+                            idx = Math.Min(idx + cols, IconListView.Items.Count - 1);
                     }
+                    else
+                    {
+                        int delta = e.Key == Key.Right ? 1 : -1;
+                        idx = Math.Clamp(idx + delta, 0, IconListView.Items.Count - 1);
+                    }
+
+                    IconListView.SelectedIndex = idx;
+                    IconListView.ScrollIntoView(IconListView.SelectedItem);
                 }
+                e.Handled = true;
             }
             else if (e.Key == Key.OemComma)
             {

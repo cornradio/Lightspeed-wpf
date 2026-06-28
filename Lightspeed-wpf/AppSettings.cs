@@ -23,6 +23,8 @@ namespace Lightspeed_wpf
         public int WindowSizeMode { get; set; } = 0;
         public int CustomWindowWidth { get; set; } = 500;
         public int CustomWindowHeight { get; set; } = 600;
+        // 手柄组合键 (XInput button bitmask), 0=禁用
+        public int GamepadHotkeyButtons { get; set; } = 0;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名
         public Dictionary<string, string> FolderAliases { get; set; } = new Dictionary<string, string>();
 

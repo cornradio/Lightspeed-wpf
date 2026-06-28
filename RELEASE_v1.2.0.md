@@ -22,3 +22,7 @@ Complete XInput gamepad integration for couch/HTPC use:
 
 - Icons now sourced from the system Jumbo image list (256x256) for crisp display at all sizes
 - Icon size slider now correctly resizes icons in both list and icon views
+
+### Controls
+
+See [CONTROLS.md](CONTROLS.md) for a full keyboard and gamepad reference.
