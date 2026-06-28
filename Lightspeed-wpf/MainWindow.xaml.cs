@@ -220,6 +220,7 @@ namespace Lightspeed_wpf
         private ushort _gamepadHotkeyButtons;
         private bool _gamepadHotkeyTriggered;
         private bool _capturingGamepadHotkey;
+        private bool _iconSizeDirty;
         private const int initialRepeatDelayMs = 200;
         private const int repeatIntervalMs = 50;
 
@@ -743,6 +744,10 @@ namespace Lightspeed_wpf
 
         private void PreloadFolderCache(int folderNum)
         {
+            // 确保尺寸变量与设置一致
+            listIconSize = AppSettings.Instance.ListIconSize;
+            iconIconSize = AppSettings.Instance.IconIconSize;
+
             if (folderCache.ContainsKey(folderNum)
                 && folderCache[folderNum].ContainsKey(false)
                 && folderCache[folderNum].ContainsKey(true))
@@ -1095,6 +1100,10 @@ namespace Lightspeed_wpf
 
         private void NavigateToFolder(int folderNum)
         {
+            // 确保尺寸变量与设置一致（防止启动时序问题）
+            listIconSize = AppSettings.Instance.ListIconSize;
+            iconIconSize = AppSettings.Instance.IconIconSize;
+
             currentFolder = folderNum;
             string path = Path.Combine(basePath, folderNum.ToString());
 
@@ -1257,9 +1266,8 @@ namespace Lightspeed_wpf
                 if (hIcon != IntPtr.Zero)
                 {
                     var managedIcon = System.Drawing.Icon.FromHandle(hIcon);
-                    int srcSize = Math.Min(managedIcon.Width, managedIcon.Height);
-                    int drawSize = Math.Min(size, Math.Max(srcSize, 16));
-                    int offset = (size - drawSize) / 2;
+                    int drawSize = size;
+                    int offset = 0;
                     ImageSource? result = null;
 
                     using (var bitmap = new Bitmap(size, size))
@@ -1390,6 +1398,11 @@ namespace Lightspeed_wpf
                     {
                         SettingsPanel.Visibility = Visibility.Collapsed;
                         BtnSettings.IsChecked = false;
+                        if (_iconSizeDirty)
+                        {
+                            SaveAndClearIconCache();
+                            _iconSizeDirty = false;
+                        }
                     }
                     NavigateToFolder(folderNum);
                 }
@@ -1524,6 +1537,12 @@ namespace Lightspeed_wpf
             {
                 SettingsPanel.Visibility = Visibility.Collapsed;
                 BtnSettings.IsChecked = false;
+                if (_iconSizeDirty)
+                {
+                    ShowToast("正在刷新图标...");
+                    ApplyIconSizeChanges();
+                    _iconSizeDirty = false;
+                }
             }
         }
 
@@ -1998,24 +2017,82 @@ return
         private void SliderIconSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (TxtIconSize == null) return;
-            
-            listIconSize = (int)SliderIconSize.Value;
-            TxtIconSize.Text = ((int)listIconSize).ToString();
-            AppSettings.Instance.ListIconSize = (int)listIconSize;
-            AppSettings.Instance.Save();
-            ClearAllCache();
-            NavigateToFolder(currentFolder);
+            TxtIconSize.Text = ((int)SliderIconSize.Value).ToString();
+            _iconSizeDirty = true;
         }
 
         private void SliderIconSizeIcon_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (TxtIconSizeIcon == null) return;
-            
+            TxtIconSizeIcon.Text = ((int)SliderIconSizeIcon.Value).ToString();
+            _iconSizeDirty = true;
+        }
+
+        private void TxtIconSize_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtIconSize.Text, out int val))
+            {
+                val = Math.Clamp(val, (int)SliderIconSize.Minimum, (int)SliderIconSize.Maximum);
+                SliderIconSize.Value = val;
+                TxtIconSize.Text = val.ToString();
+                _iconSizeDirty = true;
+            }
+            else
+            {
+                TxtIconSize.Text = ((int)SliderIconSize.Value).ToString();
+            }
+        }
+
+        private void TxtIconSize_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                TxtIconSize_LostFocus(sender, e);
+                Keyboard.ClearFocus();
+                Focus();
+            }
+        }
+
+        private void TxtIconSizeIcon_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(TxtIconSizeIcon.Text, out int val))
+            {
+                val = Math.Clamp(val, (int)SliderIconSizeIcon.Minimum, (int)SliderIconSizeIcon.Maximum);
+                SliderIconSizeIcon.Value = val;
+                TxtIconSizeIcon.Text = val.ToString();
+                _iconSizeDirty = true;
+            }
+            else
+            {
+                TxtIconSizeIcon.Text = ((int)SliderIconSizeIcon.Value).ToString();
+            }
+        }
+
+        private void TxtIconSizeIcon_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                TxtIconSizeIcon_LostFocus(sender, e);
+                Keyboard.ClearFocus();
+                Focus();
+            }
+        }
+
+        private void SaveAndClearIconCache()
+        {
+            listIconSize = (int)SliderIconSize.Value;
             iconIconSize = (int)SliderIconSizeIcon.Value;
-            TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
+            AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
-            ClearAllCache();
+            iconCache.Clear();
+            folderCache.Clear();
+            folderCacheTime.Clear();
+        }
+
+        private void ApplyIconSizeChanges()
+        {
+            SaveAndClearIconCache();
             NavigateToFolder(currentFolder);
         }
 
@@ -2709,8 +2786,20 @@ return
 
         public string FullPath { get; set; } = "";
         public bool IsDirectory { get; set; }
-        public ImageSource? Icon { get; set; }
-        public double IconSize { get; set; } = 48;
+
+        private ImageSource? _icon;
+        public ImageSource? Icon
+        {
+            get => _icon;
+            set { _icon = value; OnPropertyChanged("Icon"); }
+        }
+
+        private double _iconSize = 48;
+        public double IconSize
+        {
+            get => _iconSize;
+            set { _iconSize = value; OnPropertyChanged("IconSize"); }
+        }
 
         public bool JustOpened
         {
