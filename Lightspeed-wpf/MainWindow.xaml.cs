@@ -3007,6 +3007,9 @@ return
             }
 
             string queryLower = query.ToLowerInvariant();
+            var recentSet = new HashSet<string>(AppSettings.Instance.RecentFiles, StringComparer.OrdinalIgnoreCase);
+            var recentResults = new List<SearchResultItem>();
+            var otherResults = new List<SearchResultItem>();
 
             for (int i = 0; i <= 9; i++)
             {
@@ -3023,14 +3026,18 @@ return
                         string name = Path.GetFileName(dir);
                         if (name.ToLowerInvariant().Contains(queryLower))
                         {
-                            SearchResultsList.Items.Add(new SearchResultItem
+                            var item = new SearchResultItem
                             {
                                 Icon = GetIcon(dir, true, 20),
                                 Name = name,
                                 FullPath = dir,
                                 FolderTag = tag,
                                 IsDirectory = true
-                            });
+                            };
+                            if (recentSet.Contains(dir))
+                                recentResults.Add(item);
+                            else
+                                otherResults.Add(item);
                         }
                     }
 
@@ -3048,19 +3055,33 @@ return
                             if (AppSettings.Instance.HideDesktopIni && name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
                                 continue;
 
-                            SearchResultsList.Items.Add(new SearchResultItem
+                            var item = new SearchResultItem
                             {
                                 Icon = GetIcon(file, false, 20),
                                 Name = displayName,
                                 FullPath = file,
                                 FolderTag = tag,
                                 IsDirectory = false
-                            });
+                            };
+                            if (recentSet.Contains(file))
+                                recentResults.Add(item);
+                            else
+                                otherResults.Add(item);
                         }
                     }
                 }
                 catch { }
             }
+
+            // 按最近使用顺序排列（recentResults 中按 RecentFiles 的顺序排序）
+            var orderedRecent = recentResults
+                .OrderBy(r => AppSettings.Instance.RecentFiles.IndexOf(r.FullPath))
+                .ToList();
+
+            foreach (var item in orderedRecent)
+                SearchResultsList.Items.Add(item);
+            foreach (var item in otherResults)
+                SearchResultsList.Items.Add(item);
 
             if (SearchResultsList.Items.Count > 0)
             {
