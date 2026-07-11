@@ -221,8 +221,18 @@ namespace Lightspeed_wpf
         private bool _gamepadHotkeyTriggered;
         private bool _capturingGamepadHotkey;
         private bool _iconSizeDirty;
+        private bool _gamepadEnabled = true;
         private const int initialRepeatDelayMs = 200;
         private const int repeatIntervalMs = 50;
+
+        private class SearchResultItem
+        {
+            public ImageSource? Icon { get; set; }
+            public string Name { get; set; } = "";
+            public string FullPath { get; set; } = "";
+            public string FolderTag { get; set; } = "";
+            public bool IsDirectory { get; set; }
+        }
 
         public MainWindow()
         {
@@ -248,10 +258,16 @@ namespace Lightspeed_wpf
 
             foreach (var btn in folderButtons)
             {
+                btn.AllowDrop = true;
                 btn.PreviewMouseWheel += FolderButton_MouseWheel;
                 btn.MouseEnter += FolderButton_MouseEnter;
                 btn.MouseLeave += FolderButton_MouseLeave;
+                btn.DragOver += FolderButton_DragOver;
+                btn.Drop += FolderButton_Drop;
             }
+
+            FileListView.PreviewMouseMove += ListView_PreviewMouseMove;
+            IconListView.PreviewMouseMove += ListView_PreviewMouseMove;
         }
 
         private void FolderButton_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -470,6 +486,9 @@ namespace Lightspeed_wpf
             {
                 _gamepadHotkeyTriggered = false;
             }
+
+            // 手柄控制被关闭时，不响应其他手柄操作（快捷键仍然有效）
+            if (!_gamepadEnabled) return;
 
             if (Visibility != Visibility.Visible) return;
 
@@ -1429,6 +1448,8 @@ namespace Lightspeed_wpf
         {
             try
             {
+                AddToRecentFiles(item.FullPath);
+
                 if (item.IsDirectory)
                 {
                     string folderName = Path.GetFileName(item.FullPath);
@@ -1776,13 +1797,19 @@ namespace Lightspeed_wpf
                     {
                         string fileName = Path.GetFileName(file);
                         string destPath = Path.Combine(targetFolder, fileName);
-                        
-                        if (File.Exists(destPath))
+
+                        if (Directory.Exists(file))
                         {
-                            File.Delete(destPath);
+                            if (Directory.Exists(destPath))
+                                Directory.Delete(destPath, true);
+                            Directory.Move(file, destPath);
                         }
-                        
-                        File.Move(file, destPath);
+                        else
+                        {
+                            if (File.Exists(destPath))
+                                File.Delete(destPath);
+                            File.Move(file, destPath);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -1792,6 +1819,106 @@ namespace Lightspeed_wpf
                 
                 ClearFolderCache(currentFolder);
                 NavigateToFolder(currentFolder);
+            }
+        }
+
+        private System.Windows.Point _dragStartPoint;
+
+        private void ListView_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed)
+            {
+                _dragStartPoint = e.GetPosition(null);
+                return;
+            }
+
+            System.Windows.Point pos = e.GetPosition(null);
+            System.Windows.Vector diff = _dragStartPoint - pos;
+
+            if (Math.Abs(diff.X) > SystemParameters.MinimumHorizontalDragDistance ||
+                Math.Abs(diff.Y) > SystemParameters.MinimumVerticalDragDistance)
+            {
+                var control = sender as System.Windows.Controls.Primitives.Selector;
+                if (control == null) return;
+                var item = control.SelectedItem as FileItem;
+                if (item == null) return;
+
+                System.Windows.DragDrop.DoDragDrop(control, item.FullPath, System.Windows.DragDropEffects.Move);
+            }
+        }
+
+        private void FolderButton_DragOver(object sender, System.Windows.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop) ||
+                e.Data.GetDataPresent(System.Windows.DataFormats.Text))
+            {
+                e.Effects = System.Windows.DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effects = System.Windows.DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void FolderButton_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            if (sender is not WpfButton btn) return;
+            int targetFolderNum = folderButtons.IndexOf(btn);
+            if (targetFolderNum < 0) return;
+            string targetFolder = Path.Combine(basePath, targetFolderNum.ToString());
+
+            try
+            {
+                if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+                {
+                    // 从外部拖入的文件/文件夹
+                    string[] files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+                    foreach (string file in files)
+                    {
+                        MoveItemToFolder(file, targetFolder);
+                    }
+                    ClearFolderCache(currentFolder);
+                }
+                else if (e.Data.GetDataPresent(System.Windows.DataFormats.Text))
+                {
+                    // 从列表内部拖拽的项目
+                    string sourcePath = (string)e.Data.GetData(System.Windows.DataFormats.Text);
+                    if (targetFolderNum == currentFolder)
+                    {
+                        ShowToast("已在当前文件夹");
+                        return;
+                    }
+                    MoveItemToFolder(sourcePath, targetFolder);
+                    ClearFolderCache(currentFolder);
+                    ShowToast($"已移动到文件夹 {targetFolderNum}");
+                }
+
+                ClearFolderCache(targetFolderNum);
+                NavigateToFolder(currentFolder);
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"移动失败: {ex.Message}");
+            }
+        }
+
+        private void MoveItemToFolder(string sourcePath, string targetFolder)
+        {
+            string name = Path.GetFileName(sourcePath);
+            string destPath = Path.Combine(targetFolder, name);
+
+            if (Directory.Exists(sourcePath))
+            {
+                if (Directory.Exists(destPath))
+                    Directory.Delete(destPath, true);
+                Directory.Move(sourcePath, destPath);
+            }
+            else
+            {
+                if (File.Exists(destPath))
+                    File.Delete(destPath);
+                File.Move(sourcePath, destPath);
             }
         }
 
@@ -2457,8 +2584,33 @@ return
                 return;
             }
 
+            // 搜索弹窗打开时，屏蔽主窗口快捷键，但允许文本输入
+            if (SearchOverlay.Visibility == Visibility.Visible)
+            {
+                if (e.Key == Key.P && (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
+                {
+                    CloseSearch();
+                    e.Handled = true;
+                }
+                else if (e.Key == Key.Escape)
+                {
+                    CloseSearch();
+                    e.Handled = true;
+                }
+                // 不屏蔽其他按键，让搜索框正常接收文字输入
+                return;
+            }
+
             if (editingItem != null)
             {
+                return;
+            }
+
+            // Ctrl+P: 打开搜索
+            if (e.Key == Key.P && (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
+            {
+                OpenSearch();
+                e.Handled = true;
                 return;
             }
 
@@ -2741,6 +2893,327 @@ return
         {
             _gamepadTimer?.Stop();
             System.Environment.Exit(0);
+        }
+
+        // ========================
+        // 手柄开关
+        // ========================
+
+        private void BtnGamepadToggle_Click(object sender, RoutedEventArgs e)
+        {
+            _gamepadEnabled = BtnGamepadToggle.IsChecked == true;
+            ShowToast(_gamepadEnabled ? "手柄控制已开启" : "手柄控制已关闭");
+        }
+
+        // ========================
+        // 搜索功能
+        // ========================
+
+        private void BtnSearch_Click(object sender, RoutedEventArgs e)
+        {
+            OpenSearch();
+        }
+
+        private void OpenSearch()
+        {
+            SearchOverlay.Visibility = Visibility.Visible;
+            SearchTextBox.Text = "";
+            SearchResultsList.Items.Clear();
+            ShowRecentFiles();
+            SearchTextBox.Focus();
+        }
+
+        private void CloseSearch()
+        {
+            SearchOverlay.Visibility = Visibility.Collapsed;
+            Focus();
+        }
+
+        private void AddToRecentFiles(string path)
+        {
+            var recent = AppSettings.Instance.RecentFiles;
+            recent.Remove(path);
+            recent.Insert(0, path);
+            if (recent.Count > 20)
+                recent.RemoveRange(20, recent.Count - 20);
+            AppSettings.Instance.Save();
+        }
+
+        private void ShowRecentFiles()
+        {
+            SearchResultsList.Items.Clear();
+            var recent = AppSettings.Instance.RecentFiles;
+            int count = 0;
+
+            foreach (string path in recent)
+            {
+                if (count >= 5) break;
+                if (!File.Exists(path) && !Directory.Exists(path)) continue;
+
+                bool isDir = Directory.Exists(path);
+                string name = Path.GetFileName(path);
+                string displayName = name;
+                if (!isDir && AppSettings.Instance.HideExtensions && name.Contains('.'))
+                {
+                    int dotIndex = name.LastIndexOf('.');
+                    displayName = name.Substring(0, dotIndex);
+                }
+
+                int? parentFolder = GetParentFolderNum(path);
+                string alias = parentFolder.HasValue
+                    ? (AppSettings.Instance.FolderAliases.TryGetValue(parentFolder.Value.ToString(), out var a) ? a : $"[{parentFolder}]")
+                    : "";
+                string tag = parentFolder.HasValue ? $"[{parentFolder}] {alias}" : "";
+
+                SearchResultsList.Items.Add(new SearchResultItem
+                {
+                    Icon = GetIcon(path, isDir, 20),
+                    Name = displayName,
+                    FullPath = path,
+                    FolderTag = tag,
+                    IsDirectory = isDir
+                });
+                count++;
+            }
+
+            if (SearchResultsList.Items.Count > 0)
+                SearchResultsList.SelectedIndex = 0;
+        }
+
+        private void BtnCloseSearch_Click(object sender, RoutedEventArgs e)
+        {
+            CloseSearch();
+        }
+
+        private void SearchOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            CloseSearch();
+        }
+
+        private void SearchBorder_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true; // 阻止点击穿透到背景
+        }
+
+        private void SearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            string query = SearchTextBox.Text.Trim();
+            SearchResultsList.Items.Clear();
+
+            if (string.IsNullOrEmpty(query))
+            {
+                ShowRecentFiles();
+                return;
+            }
+
+            string queryLower = query.ToLowerInvariant();
+
+            for (int i = 0; i <= 9; i++)
+            {
+                string folderPath = Path.Combine(basePath, i.ToString());
+                if (!Directory.Exists(folderPath)) continue;
+
+                string alias = AppSettings.Instance.FolderAliases.TryGetValue(i.ToString(), out var a) ? a : $"[{i}]";
+                string tag = $"[{i}] {alias}";
+
+                try
+                {
+                    foreach (string dir in Directory.GetDirectories(folderPath))
+                    {
+                        string name = Path.GetFileName(dir);
+                        if (name.ToLowerInvariant().Contains(queryLower))
+                        {
+                            SearchResultsList.Items.Add(new SearchResultItem
+                            {
+                                Icon = GetIcon(dir, true, 20),
+                                Name = name,
+                                FullPath = dir,
+                                FolderTag = tag,
+                                IsDirectory = true
+                            });
+                        }
+                    }
+
+                    foreach (string file in Directory.GetFiles(folderPath))
+                    {
+                        string name = Path.GetFileName(file);
+                        string displayName = name;
+                        if (AppSettings.Instance.HideExtensions && name.Contains('.'))
+                        {
+                            int dotIndex = name.LastIndexOf('.');
+                            displayName = name.Substring(0, dotIndex);
+                        }
+                        if (displayName.ToLowerInvariant().Contains(queryLower) || name.ToLowerInvariant().Contains(queryLower))
+                        {
+                            if (AppSettings.Instance.HideDesktopIni && name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                                continue;
+
+                            SearchResultsList.Items.Add(new SearchResultItem
+                            {
+                                Icon = GetIcon(file, false, 20),
+                                Name = displayName,
+                                FullPath = file,
+                                FolderTag = tag,
+                                IsDirectory = false
+                            });
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (SearchResultsList.Items.Count > 0)
+            {
+                SearchResultsList.SelectedIndex = 0;
+            }
+        }
+
+        private void SearchTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                CloseSearch();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down)
+            {
+                if (SearchResultsList.Items.Count > 0)
+                {
+                    SearchResultsList.Focus();
+                    if (SearchResultsList.SelectedIndex < 0)
+                        SearchResultsList.SelectedIndex = 0;
+                    else if (SearchResultsList.SelectedIndex < SearchResultsList.Items.Count - 1)
+                        SearchResultsList.SelectedIndex++;
+                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
+                }
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                OpenSearchResult();
+                e.Handled = true;
+            }
+        }
+
+        private void SearchResultsList_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                CloseSearch();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Enter)
+            {
+                OpenSearchResult();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up)
+            {
+                if (SearchResultsList.SelectedIndex > 0)
+                    SearchResultsList.SelectedIndex--;
+                else
+                    SearchTextBox.Focus();
+                if (SearchResultsList.SelectedItem != null)
+                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Down)
+            {
+                if (SearchResultsList.SelectedIndex < SearchResultsList.Items.Count - 1)
+                    SearchResultsList.SelectedIndex++;
+                if (SearchResultsList.SelectedItem != null)
+                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
+                e.Handled = true;
+            }
+        }
+
+        private void SearchResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            OpenSearchResult();
+        }
+
+        private void OpenSearchResult()
+        {
+            if (SearchResultsList.SelectedItem is SearchResultItem item)
+            {
+                AddToRecentFiles(item.FullPath);
+                CloseSearch();
+
+                if (item.IsDirectory)
+                {
+                    // 如果是 0-9 文件夹，直接导航
+                    string folderName = Path.GetFileName(item.FullPath);
+                    if (int.TryParse(folderName, out int folderNum) && folderNum >= 0 && folderNum <= 9)
+                    {
+                        NavigateToFolder(folderNum);
+                        return;
+                    }
+
+                    // 其他子文件夹：找到所属的 0-9 文件夹并导航
+                    int? parentFolder = GetParentFolderNum(item.FullPath);
+                    if (parentFolder.HasValue)
+                    {
+                        NavigateToFolder(parentFolder.Value);
+                        // 导航后选中该子文件夹
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            SelectItemByPath(item.FullPath);
+                        }), System.Windows.Threading.DispatcherPriority.Loaded);
+                    }
+                    else
+                    {
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = item.FullPath,
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                else
+                {
+                    OpenItem(new FileItem
+                    {
+                        Name = item.Name,
+                        FullPath = item.FullPath,
+                        IsDirectory = false
+                    });
+                }
+            }
+        }
+
+        private int? GetParentFolderNum(string path)
+        {
+            string? current = Path.GetDirectoryName(path);
+            while (current != null && current != basePath)
+            {
+                string name = Path.GetFileName(current);
+                if (int.TryParse(name, out int num) && num >= 0 && num <= 9)
+                    return num;
+                current = Path.GetDirectoryName(current);
+            }
+            return null;
+        }
+
+        private void SelectItemByPath(string fullPath)
+        {
+            var items = isListView ? FileListView.Items : (System.Windows.Controls.ItemCollection)IconListView.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] is FileItem fi && fi.FullPath.Equals(fullPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (isListView)
+                    {
+                        FileListView.SelectedIndex = i;
+                        FileListView.ScrollIntoView(FileListView.Items[i]);
+                    }
+                    else
+                    {
+                        IconListView.SelectedIndex = i;
+                        IconListView.ScrollIntoView(IconListView.Items[i]);
+                    }
+                    break;
+                }
+            }
         }
     }
 

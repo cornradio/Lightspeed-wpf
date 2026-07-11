@@ -27,6 +27,8 @@ namespace Lightspeed_wpf
         public int GamepadHotkeyButtons { get; set; } = 0;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名
         public Dictionary<string, string> FolderAliases { get; set; } = new Dictionary<string, string>();
+        // 最近打开过的文件/文件夹路径 (最多保留 20 条)
+        public List<string> RecentFiles { get; set; } = new List<string>();
 
         private static AppSettings? _instance;
         public static AppSettings Instance
