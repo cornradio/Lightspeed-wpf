@@ -27,4 +27,5 @@ ctrl P 搜索0-9文件夹内条目（或者点击右上角的搜索按钮）
 右键程序，可以看到常用快捷方式，如打开方式、文件位置等（手柄X键）
 <img width="600" height="" alt="image" src="https://github.com/user-attachments/assets/42af180c-cc70-4730-9fa7-4e5884925a80" />
 
-
+程序有两种展示模式 List 、 Grid （默认是List模式）点击右下按钮切换。
+<img width="600" height="" alt="image" src="https://github.com/user-attachments/assets/4b0b3014-3d27-4238-b00e-5400484f87f2" />
