@@ -11,11 +11,17 @@ namespace Lightspeed_wpf
 
         public bool AutoStartAHK { get; set; } = false;
         public bool AutoStartWithWindows { get; set; } = false;
+        // 托盘图标单击行为: 0=打开主界面, 1=打开搜索页面
+        public int TrayClickAction { get; set; } = 0;
         public bool HideDesktopIni { get; set; } = false;
         public bool HideExtensions { get; set; } = false;
+        public bool SingleClickOpen { get; set; } = false;
         public bool IsListView { get; set; } = true;
         public int HotkeyModifiers { get; set; } = 1;
         public int HotkeyKey { get; set; } = 0x53;
+        // 搜索快捷键 (默认 Alt+Shift+Space)
+        public int SearchHotkeyModifiers { get; set; } = 0x0005;
+        public int SearchHotkeyKey { get; set; } = 0x20;
         public bool DisableHotkeyInFullscreen { get; set; } = true;
         public int ListIconSize { get; set; } = 30;
         public int IconIconSize { get; set; } = 60;
@@ -23,6 +29,15 @@ namespace Lightspeed_wpf
         public int WindowSizeMode { get; set; } = 0;
         public int CustomWindowWidth { get; set; } = 500;
         public int CustomWindowHeight { get; set; } = 600;
+        // 触控模式: 顶部/底部栏整体放大 2 倍
+        public bool TouchMode { get; set; } = false;
+        // 窗口透明度 (0.2~1.0)
+        public double WindowOpacity { get; set; } = 1.0;
+        // 0=直接透明, 1=Win11 模糊
+        public int BlurMode { get; set; } = 0;
+        // 窗口边框颜色与厚度 (厚度 0=无边框)
+        public string WindowBorderColor { get; set; } = "#00FF00";
+        public int WindowBorderThickness { get; set; } = 0;
         // 手柄组合键 (XInput button bitmask), 0=禁用
         public int GamepadHotkeyButtons { get; set; } = 0;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名

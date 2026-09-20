@@ -25,6 +25,7 @@ namespace Lightspeed_wpf
     public partial class MainWindow : Window
     {
         private const int HOTKEY_ID = 9000;
+        private const int SEARCH_HOTKEY_ID = 9001;
 
         [DllImport("user32.dll")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -58,19 +59,21 @@ namespace Lightspeed_wpf
         private HwndSource? source;
 
         private Dictionary<int, Dictionary<bool, List<FileItem>>> folderCache = new Dictionary<int, Dictionary<bool, List<FileItem>>>();
-        private Dictionary<string, ImageSource> iconCache = new Dictionary<string, ImageSource>();
         private Dictionary<int, DateTime> folderCacheTime = new Dictionary<int, DateTime>();
 
         private uint currentModifiers = 0x0001;
         private uint currentKey = 0x53;
         private bool isCapturingKey = false;
         private FileItem? editingItem = null;
+        private Forms.ToolStripMenuItem? trayHotkeyItem;
+        private uint searchModifiers = 0x0005;
+        private uint searchKey = 0x20;
+        private bool isCapturingSearchKey = false;
+        private bool _loadingSettings = false;
+        private SearchWindow? _searchWindow;
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern int SHOpenFolderAndSelectItems(IntPtr pidlFolder, uint cidl, IntPtr[] apidl, uint dwFlags);
-
-        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
 
         [DllImport("shell32.dll", EntryPoint = "SHParseDisplayName")]
         private static extern IntPtr SHParseDisplayName([MarshalAs(UnmanagedType.LPWStr)] string pszName, IntPtr pbc, out IntPtr ppidl, uint sfgaoIn, out uint psfgaoOut);
@@ -102,69 +105,16 @@ namespace Lightspeed_wpf
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern int SHFileOperation(ref SHFILEOPSTRUCT FileOp);
 
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-        private struct SHFILEINFO
-        {
-            public IntPtr hIcon;
-            public int iIcon;
-            public uint dwAttributes;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-            public string szDisplayName;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-            public string szTypeName;
-        }
-
-        private const uint SHGFI_ICON = 0x100;
-        private const uint SHGFI_SMALLICON = 0x1;
-        private const uint SHGFI_LARGEICON = 0x0;
-        private const uint SHGFI_SYSICONINDEX = 0x4000;
-        private const int SHIL_JUMBO = 0x4;
-        private const uint ILD_TRANSPARENT = 0x0001;
-        private const uint FILE_ATTRIBUTE_DIRECTORY = 0x10;
-        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
-
-        [DllImport("shell32.dll")]
-        private static extern int SHGetImageList(int iImageList, ref Guid riid, out IImageListNative ppv);
-
-        [ComImport]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        [Guid("43EB78CB-9080-4D08-8020-B5C3D0A25B7E")]
-        private interface IImageListNative
-        {
-            void Unused1(); void Unused2(); void Unused3(); void Unused4(); void Unused5();
-            void Unused6(); void Unused7(); void Unused8(); void Unused9(); void Unused10();
-            void Unused11();
-            [PreserveSig]
-            int GetIcon(int i, uint flags, out IntPtr picon);
-        }
-
-        private static IntPtr GetJumboIconHandle(int iconIndex)
-        {
-            try
-            {
-                var iid = new Guid("43EB78CB-9080-4D08-8020-B5C3D0A25B7E");
-                if (SHGetImageList(SHIL_JUMBO, ref iid, out var imageList) == 0 && imageList != null)
-                {
-                    try
-                    {
-                        if (imageList.GetIcon(iconIndex, ILD_TRANSPARENT, out var hIcon) == 0 && hIcon != IntPtr.Zero)
-                            return hIcon;
-                    }
-                    finally { Marshal.ReleaseComObject(imageList); }
-                }
-            }
-            catch { }
-            return IntPtr.Zero;
-        }
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool DestroyIcon(IntPtr hIcon);
-
-        [DllImport("gdi32.dll")]
-        private static extern bool DeleteObject(IntPtr hObject);
-
         [DllImport("imm32.dll")]
         private static extern bool ImmDisableIME(IntPtr hkl);
+
+        // --- DWM 系统背景 (Win11 模糊) ---
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
+        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+        private const int DWMSBT_NONE = 1;
+        private const int DWMSBT_MAINWINDOW = 2;
+        private const int DWMSBT_TRANSIENTWINDOW = 3;
 
         // --- XInput 手柄支持 ---
         [DllImport("xinput1_4.dll", EntryPoint = "XInputGetState")]
@@ -225,15 +175,6 @@ namespace Lightspeed_wpf
         private const int initialRepeatDelayMs = 200;
         private const int repeatIntervalMs = 50;
 
-        private class SearchResultItem
-        {
-            public ImageSource? Icon { get; set; }
-            public string Name { get; set; } = "";
-            public string FullPath { get; set; } = "";
-            public string FolderTag { get; set; } = "";
-            public bool IsDirectory { get; set; }
-        }
-
         public MainWindow()
         {
             InitializeComponent();
@@ -268,6 +209,8 @@ namespace Lightspeed_wpf
 
             FileListView.PreviewMouseMove += ListView_PreviewMouseMove;
             IconListView.PreviewMouseMove += ListView_PreviewMouseMove;
+            FileListView.PreviewMouseLeftButtonUp += ListView_PreviewMouseLeftButtonUp;
+            IconListView.PreviewMouseLeftButtonUp += ListView_PreviewMouseLeftButtonUp;
         }
 
         private void FolderButton_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -333,16 +276,17 @@ namespace Lightspeed_wpf
             notifyIcon.Icon = LoadAppIcon() ?? SystemIcons.Application;
             notifyIcon.Text = "Lightspeed";
             notifyIcon.Visible = true;
-            notifyIcon.Click += (s, e) => ShowFromTray();
-            notifyIcon.DoubleClick += (s, e) => ShowFromTray();
+            notifyIcon.Click += (s, e) => TrayIcon_Click();
+            notifyIcon.DoubleClick += (s, e) => TrayIcon_Click();
 
             var contextMenu = new Forms.ContextMenuStrip();
             var showItem = new Forms.ToolStripMenuItem("显示窗口");
             showItem.Click += (s, e) => ShowFromTray();
             contextMenu.Items.Add(showItem);
 
-            var hotkeyItem = new Forms.ToolStripMenuItem($"快捷键: Alt+S");
+            var hotkeyItem = new Forms.ToolStripMenuItem($"快捷键: {GetHotkeyDisplayString(currentModifiers, currentKey)}");
             hotkeyItem.Enabled = false;
+            trayHotkeyItem = hotkeyItem;
             contextMenu.Items.Add(hotkeyItem);
 
             contextMenu.Items.Add(new Forms.ToolStripSeparator());
@@ -385,6 +329,14 @@ namespace Lightspeed_wpf
             Show();
             WindowState = WindowState.Normal;
             Activate();
+        }
+
+        private void TrayIcon_Click()
+        {
+            if (AppSettings.Instance.TrayClickAction == 1)
+                GetSearchWindow().ShowSearch();
+            else
+                ShowFromTray();
         }
 
         private void ToggleVisibility()
@@ -824,6 +776,7 @@ namespace Lightspeed_wpf
             TxtVersion.Text = ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "-";
             ChkHideDesktopIni.IsChecked = AppSettings.Instance.HideDesktopIni;
             ChkHideExtensions.IsChecked = AppSettings.Instance.HideExtensions;
+            ChkSingleClickOpen.IsChecked = AppSettings.Instance.SingleClickOpen;
             ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
             
             listIconSize = AppSettings.Instance.ListIconSize;
@@ -852,8 +805,13 @@ namespace Lightspeed_wpf
             currentModifiers = (uint)AppSettings.Instance.HotkeyModifiers;
             currentKey = (uint)AppSettings.Instance.HotkeyKey;
             UpdateHotkeyDisplay();
-            
+
             RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
+
+            searchModifiers = (uint)AppSettings.Instance.SearchHotkeyModifiers;
+            searchKey = (uint)AppSettings.Instance.SearchHotkeyKey;
+            RegisterHotKey(windowHandle, SEARCH_HOTKEY_ID, searchModifiers, searchKey);
+            UpdateSearchHotkeyDisplay();
 
             _gamepadHotkeyButtons = (ushort)AppSettings.Instance.GamepadHotkeyButtons;
             UpdateGamepadHotkeyDisplay();
@@ -887,6 +845,33 @@ namespace Lightspeed_wpf
             TxtCustomWidth.Text = AppSettings.Instance.CustomWindowWidth.ToString();
             TxtCustomHeight.Text = AppSettings.Instance.CustomWindowHeight.ToString();
             ApplyWindowSize();
+
+            // 触控模式
+            ChkTouchMode.IsChecked = AppSettings.Instance.TouchMode;
+            ApplyTouchMode();
+
+            // 托盘图标单击行为
+            if (AppSettings.Instance.TrayClickAction == 1)
+                RbTraySearch.IsChecked = true;
+            else
+                RbTrayMain.IsChecked = true;
+
+            // 透明度 / 模糊模式
+            _loadingSettings = true;
+            OpacitySlider.Value = AppSettings.Instance.WindowOpacity;
+            if (AppSettings.Instance.BlurMode == 1)
+                RbBlurMode.IsChecked = true;
+            else
+                RbTransparencyMode.IsChecked = true;
+            _loadingSettings = false;
+            ApplyOpacity();
+            ApplyBlurEffect();
+
+            // 窗口边框
+            TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
+            SliderBorderThickness.Value = AppSettings.Instance.WindowBorderThickness;
+            TxtBorderThickness.Text = AppSettings.Instance.WindowBorderThickness.ToString();
+            ApplyWindowBorder();
         }
 
         private void ApplyWindowSize()
@@ -909,6 +894,156 @@ namespace Lightspeed_wpf
                 if (w > 0) this.Width = w;
                 if (h > 0) this.Height = h;
             }
+        }
+
+        private void ApplyTouchMode()
+        {
+            double f = AppSettings.Instance.TouchMode ? 1.5 : 1.0;
+            TitleBarGrid.LayoutTransform = new ScaleTransform(f, f);
+            BottomBarBorder.LayoutTransform = new ScaleTransform(f, f);
+        }
+
+        private void ChkTouchMode_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.TouchMode = ChkTouchMode.IsChecked ?? false;
+            AppSettings.Instance.Save();
+            ApplyTouchMode();
+        }
+
+        private void RbTrayClick_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
+            {
+                AppSettings.Instance.TrayClickAction = int.Parse(rb.Tag.ToString()!);
+                AppSettings.Instance.Save();
+            }
+        }
+
+        private void ApplyOpacity()
+        {
+            double opacity = Math.Clamp(AppSettings.Instance.WindowOpacity, 0.2, 1.0);
+            this.Opacity = opacity;
+            if (TxtOpacityValue != null)
+            {
+                TxtOpacityValue.Text = ((int)Math.Round(opacity * 100)) + "%";
+            }
+        }
+
+        private void ApplyBlurEffect()
+        {
+            bool blur = AppSettings.Instance.BlurMode == 1;
+            int backdrop = blur ? DWMSBT_TRANSIENTWINDOW : DWMSBT_NONE;
+            try
+            {
+                DwmSetWindowAttribute(windowHandle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int));
+            }
+            catch { }
+
+            // 模糊模式: 窗口与主要面板背景改为半透明, 让桌面透出 (分层窗口上 DWM 背景可能不合成, 退化为玻璃观感)
+            System.Windows.Media.Color baseColor = blur ? System.Windows.Media.Color.FromArgb(0xD9, 0x1E, 0x1E, 0x1E) : System.Windows.Media.Color.FromRgb(0x1E, 0x1E, 0x1E);
+            System.Windows.Media.Color barColor = blur ? System.Windows.Media.Color.FromArgb(0xD9, 0x25, 0x25, 0x25) : System.Windows.Media.Color.FromRgb(0x25, 0x25, 0x25);
+            this.Background = new SolidColorBrush(baseColor);
+            TitleBarGrid.Background = new SolidColorBrush(baseColor);
+            BottomBarBorder.Background = new SolidColorBrush(barColor);
+        }
+
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_loadingSettings) return;
+            double value = Math.Clamp(OpacitySlider.Value, 0.2, 1.0);
+            AppSettings.Instance.WindowOpacity = value;
+            ApplyOpacity();
+            AppSettings.Instance.Save();
+        }
+
+        private void RbBlurMode_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
+            {
+                int mode = int.Parse(rb.Tag.ToString()!);
+                AppSettings.Instance.BlurMode = mode;
+                AppSettings.Instance.Save();
+                ApplyBlurEffect();
+            }
+        }
+
+        private void ApplyWindowBorder()
+        {
+            int thickness = AppSettings.Instance.WindowBorderThickness;
+            WindowBorder.BorderThickness = new Thickness(thickness);
+            try
+            {
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(AppSettings.Instance.WindowBorderColor);
+                WindowBorder.BorderBrush = new SolidColorBrush(color);
+            }
+            catch
+            {
+                WindowBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
+            }
+            UpdateAccentResources();
+        }
+
+        private System.Windows.Media.Color GetAccentColor()
+        {
+            try
+            {
+                return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(AppSettings.Instance.WindowBorderColor);
+            }
+            catch
+            {
+                return System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3);
+            }
+        }
+
+        private void UpdateAccentResources()
+        {
+            var c = GetAccentColor();
+            var app = System.Windows.Application.Current;
+            if (app == null) return;
+            app.Resources["AccentBrush"] = new SolidColorBrush(c);
+            app.Resources["AccentSelectedBrush"] = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x59, c.R, c.G, c.B));
+        }
+
+        private void BorderColorPreset_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is WpfButton btn && btn.Tag is string colorHex)
+            {
+                AppSettings.Instance.WindowBorderColor = colorHex;
+                TxtBorderColor.Text = colorHex;
+                AppSettings.Instance.Save();
+                ApplyWindowBorder();
+            }
+        }
+
+        private void TxtBorderColor_LostFocus(object sender, RoutedEventArgs e)
+        {
+            string text = TxtBorderColor.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(text))
+            {
+                TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
+                return;
+            }
+            try
+            {
+                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(text);
+                AppSettings.Instance.WindowBorderColor = text;
+                AppSettings.Instance.Save();
+                ApplyWindowBorder();
+            }
+            catch
+            {
+                TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
+            }
+        }
+
+        private void SliderBorderThickness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_loadingSettings) return;
+            int thickness = (int)Math.Round(SliderBorderThickness.Value);
+            AppSettings.Instance.WindowBorderThickness = thickness;
+            TxtBorderThickness.Text = thickness.ToString();
+            ApplyWindowBorder();
+            AppSettings.Instance.Save();
         }
 
         private void RbWindowMode_Changed(object sender, RoutedEventArgs e)
@@ -969,13 +1104,28 @@ namespace Lightspeed_wpf
 
         private void UpdateHotkeyDisplay()
         {
-            string modifiers = "";
-            if ((currentModifiers & 0x0001) != 0) modifiers += "Alt+";
-            if ((currentModifiers & 0x0002) != 0) modifiers += "Ctrl+";
-            if ((currentModifiers & 0x0004) != 0) modifiers += "Shift+";
-            
-            string keyName = GetKeyDisplayName(KeyInterop.KeyFromVirtualKey((int)currentKey));
-            TxtHotkey.Text = modifiers + keyName;
+            string text = GetHotkeyDisplayString(currentModifiers, currentKey);
+            TxtHotkey.Text = text;
+            if (trayHotkeyItem != null)
+            {
+                trayHotkeyItem.Text = $"快捷键: {text}";
+            }
+        }
+
+        private string GetHotkeyDisplayString(uint modifiers, uint key)
+        {
+            string m = "";
+            if ((modifiers & 0x0001) != 0) m += "Alt+";
+            if ((modifiers & 0x0002) != 0) m += "Ctrl+";
+            if ((modifiers & 0x0004) != 0) m += "Shift+";
+            if ((modifiers & 0x0008) != 0) m += "Win+";
+            string keyName = GetKeyDisplayName(KeyInterop.KeyFromVirtualKey((int)key));
+            return m + keyName;
+        }
+
+        private void UpdateSearchHotkeyDisplay()
+        {
+            TxtSearchHotkey.Text = GetHotkeyDisplayString(searchModifiers, searchKey);
         }
 
         private string GetKeyDisplayName(Key key)
@@ -1085,15 +1235,24 @@ namespace Lightspeed_wpf
         private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
             const int WM_HOTKEY = 0x0312;
-            if (msg == WM_HOTKEY && wParam.ToInt32() == HOTKEY_ID)
+            if (msg == WM_HOTKEY)
             {
+                int hotkeyId = wParam.ToInt32();
                 if (AppSettings.Instance.DisableHotkeyInFullscreen && IsFullscreenAppRunning())
                 {
                     handled = true;
                     return IntPtr.Zero;
                 }
-                ToggleWindowVisibility();
-                handled = true;
+                if (hotkeyId == HOTKEY_ID)
+                {
+                    ToggleWindowVisibility();
+                    handled = true;
+                }
+                else if (hotkeyId == SEARCH_HOTKEY_ID)
+                {
+                    SummonSearch();
+                    handled = true;
+                }
             }
             return IntPtr.Zero;
         }
@@ -1106,7 +1265,7 @@ namespace Lightspeed_wpf
                 if (notifyIcon != null)
                 {
                     notifyIcon.Visible = true;
-                    notifyIcon.ShowBalloonTip(500, "Lightspeed", "已隐藏到托盘，按 Alt+S 显示", Forms.ToolTipIcon.Info);
+                    notifyIcon.ShowBalloonTip(500, "Lightspeed", $"已隐藏到托盘，按 {GetHotkeyDisplayString(currentModifiers, currentKey)} 显示", Forms.ToolTipIcon.Info);
                 }
             }
             else
@@ -1115,6 +1274,61 @@ namespace Lightspeed_wpf
                 WindowState = WindowState.Normal;
                 Activate();
             }
+        }
+
+        private SearchWindow GetSearchWindow()
+        {
+            if (_searchWindow == null)
+            {
+                _searchWindow = new SearchWindow();
+            }
+            return _searchWindow;
+        }
+
+        private void SummonSearch()
+        {
+            GetSearchWindow().ShowSearch();
+        }
+
+        // 供 SearchWindow 打开搜索结果时调用：记录最近使用 + 导航/打开
+        public void OpenSearchResultPath(string path)
+        {
+            AddToRecentFiles(path);
+            bool isDir = Directory.Exists(path);
+
+            if (isDir)
+            {
+                string folderName = Path.GetFileName(path);
+                if (int.TryParse(folderName, out int folderNum) && folderNum >= 0 && folderNum <= 9)
+                {
+                    ShowFromTray();
+                    NavigateToFolder(folderNum);
+                    return;
+                }
+
+                int? parentFolder = GetParentFolderNum(path);
+                if (parentFolder.HasValue)
+                {
+                    ShowFromTray();
+                    NavigateToFolder(parentFolder.Value);
+                    Dispatcher.BeginInvoke(new Action(() => SelectItemByPath(path)), System.Windows.Threading.DispatcherPriority.Loaded);
+                    return;
+                }
+
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+                return;
+            }
+
+            // 文件：直接打开
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
         }
 
         private void NavigateToFolder(int folderNum)
@@ -1238,7 +1452,7 @@ namespace Lightspeed_wpf
                 FullPath = path,
                 IsDirectory = isDirectory,
                 IconSize = scaledSize,
-                Icon = GetIcon(path, isDirectory, (int)scaledSize)
+                Icon = IconHelper.GetIcon(path, isDirectory, (int)scaledSize)
             };
         }
 
@@ -1254,105 +1468,12 @@ namespace Lightspeed_wpf
         [DllImport("user32.dll")]
         private static extern IntPtr GetDC(IntPtr hwnd);
 
-        private ImageSource GetIcon(string path, bool isDirectory, int size)
-        {
-            string cacheKey = $"{path}_{size}";
-            if (iconCache.ContainsKey(cacheKey))
-            {
-                return iconCache[cacheKey];
-            }
-
-            try
-            {
-                // 1. 获取系统图标索引
-                SHFILEINFO shfi = new SHFILEINFO();
-                uint flags = SHGFI_SYSICONINDEX;
-                uint attributes = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-                SHGetFileInfo(path, attributes, ref shfi, (uint)Marshal.SizeOf(shfi), flags);
-
-                // 2. 优先从 Jumbo 图像列表获取 256x256 高清图标
-                IntPtr hIcon = GetJumboIconHandle(shfi.iIcon);
-                bool isJumbo = hIcon != IntPtr.Zero;
-
-                // 3. 回退到普通大图标
-                if (!isJumbo)
-                {
-                    SHFILEINFO shfi2 = new SHFILEINFO();
-                    SHGetFileInfo(path, attributes, ref shfi2, (uint)Marshal.SizeOf(shfi2), SHGFI_ICON | SHGFI_LARGEICON);
-                    hIcon = shfi2.hIcon;
-                }
-
-                if (hIcon != IntPtr.Zero)
-                {
-                    var managedIcon = System.Drawing.Icon.FromHandle(hIcon);
-                    int drawSize = size;
-                    int offset = 0;
-                    ImageSource? result = null;
-
-                    using (var bitmap = new Bitmap(size, size))
-                    using (var graphics = Graphics.FromImage(bitmap))
-                    {
-                        graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-                        graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
-                        graphics.Clear(System.Drawing.Color.Transparent);
-                        graphics.DrawIcon(managedIcon, new Rectangle(offset, offset, drawSize, drawSize));
-
-                        var hBitmap = bitmap.GetHbitmap(System.Drawing.Color.FromArgb(0, 0, 0, 0));
-                        try
-                        {
-                            result = System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                                hBitmap, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-                            result.Freeze();
-                        }
-                        finally
-                        {
-                            DeleteObject(hBitmap);
-                        }
-                    }
-                    DestroyIcon(hIcon);
-
-                    if (result != null)
-                    {
-                        iconCache[cacheKey] = result;
-                        return result;
-                    }
-                }
-            }
-            catch { }
-
-            var defaultIcon = CreateDefaultIcon(isDirectory, size);
-            iconCache[cacheKey] = defaultIcon;
-            return defaultIcon;
-        }
-
-        private ImageSource CreateDefaultIcon(bool isFolder, int size)
-        {
-            DrawingVisual drawingVisual = new DrawingVisual();
-            using (DrawingContext dc = drawingVisual.RenderOpen())
-            {
-                if (isFolder)
-                {
-                    dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 193, 7)), null, new Rect(2, 6, 20, 16));
-                    dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 160, 0)), null, new Rect(2, 2, 10, 6));
-                }
-                else
-                {
-                    dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromRgb(144, 202, 249)), null, new Rect(2, 2, 20, 20));
-                }
-            }
-
-            RenderTargetBitmap renderBitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-            renderBitmap.Render(drawingVisual);
-            return renderBitmap;
-        }
-
         private void UpdateFolderButtonSelection(int selectedFolder)
         {
             for (int i = 0; i < folderButtons.Count; i++)
             {
                 folderButtons[i].Background = (i == selectedFolder)
-                    ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 128, 128))
+                    ? new SolidColorBrush(GetAccentColor())
                     : new SolidColorBrush(System.Windows.Media.Color.FromRgb(61, 61, 61));
                 folderButtons[i].Foreground = (i == selectedFolder)
                     ? new SolidColorBrush(Colors.White)
@@ -1395,15 +1516,7 @@ namespace Lightspeed_wpf
             }
             folderCache.Clear();
             folderCacheTime.Clear();
-            
-            foreach (var icon in iconCache.Values)
-            {
-                if (icon is System.Windows.Media.Imaging.BitmapSource bitmapSource)
-                {
-                    bitmapSource.Freeze();
-                }
-            }
-            iconCache.Clear();
+            IconHelper.ClearCache();
         }
 
         private void FolderButton_Click(object sender, RoutedEventArgs e)
@@ -1430,6 +1543,7 @@ namespace Lightspeed_wpf
 
         private void FileListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            if (AppSettings.Instance.SingleClickOpen) return;
             if (FileListView.SelectedItem is FileItem item)
             {
                 OpenItem(item);
@@ -1438,6 +1552,7 @@ namespace Lightspeed_wpf
 
         private void IconListView_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
+            if (AppSettings.Instance.SingleClickOpen) return;
             if (IconListView.SelectedItem is FileItem item)
             {
                 OpenItem(item);
@@ -1565,6 +1680,39 @@ namespace Lightspeed_wpf
                     _iconSizeDirty = false;
                 }
             }
+        }
+
+        // 点击设置面板空白区域关闭设置（交互控件除外）
+        private void SettingsPanel_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (IsSettingsInteractive(e.OriginalSource as DependencyObject)) return;
+            ToggleSettingsPanel();
+            e.Handled = true;
+        }
+
+        private bool IsSettingsInteractive(DependencyObject? original)
+        {
+            // 文本超链接属于 ContentElement, 不在视觉树中
+            if (original is System.Windows.Documents.Hyperlink || original is System.Windows.Documents.Run)
+                return true;
+
+            DependencyObject? d = original;
+            while (d != null)
+            {
+                if (d is System.Windows.Controls.Primitives.ButtonBase ||
+                    d is WpfTextBox ||
+                    d is System.Windows.Controls.Primitives.RangeBase ||
+                    d is System.Windows.Controls.Primitives.Thumb)
+                {
+                    return true;
+                }
+
+                if (d is System.Windows.Media.Visual || d is System.Windows.Media.Media3D.Visual3D)
+                    d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+                else
+                    break;
+            }
+            return false;
         }
 
         private void BtnCreateFolders_Click(object sender, RoutedEventArgs e)
@@ -1765,6 +1913,12 @@ namespace Lightspeed_wpf
             NavigateToFolder(currentFolder);
         }
 
+        private void ChkSingleClickOpen_Changed(object sender, RoutedEventArgs e)
+        {
+            AppSettings.Instance.SingleClickOpen = ChkSingleClickOpen.IsChecked ?? false;
+            AppSettings.Instance.Save();
+        }
+
         private void ChkDisableInFullscreen_Changed(object sender, RoutedEventArgs e)
         {
             AppSettings.Instance.DisableHotkeyInFullscreen = ChkDisableInFullscreen.IsChecked ?? true;
@@ -1823,6 +1977,28 @@ namespace Lightspeed_wpf
         }
 
         private System.Windows.Point _dragStartPoint;
+        private DateTime _lastSingleClickOpenTime = DateTime.MinValue;
+        private string? _lastSingleClickOpenPath;
+
+        private void ListView_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!AppSettings.Instance.SingleClickOpen) return;
+            if (editingItem != null) return;
+
+            if (e.OriginalSource is FrameworkElement element && element.DataContext is FileItem item)
+            {
+                if ((DateTime.Now - _lastSingleClickOpenTime).TotalMilliseconds < 400 &&
+                    _lastSingleClickOpenPath == item.FullPath)
+                {
+                    e.Handled = true;
+                    return;
+                }
+                _lastSingleClickOpenTime = DateTime.Now;
+                _lastSingleClickOpenPath = item.FullPath;
+                OpenItem(item);
+                e.Handled = true;
+            }
+        }
 
         private void ListView_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
         {
@@ -1975,8 +2151,65 @@ namespace Lightspeed_wpf
             
             UnregisterHotKey(windowHandle, HOTKEY_ID);
             RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
-            
+
             UpdateHotkeyDisplay();
+        }
+
+        private void BtnCaptureSearchHotkey_Click(object sender, RoutedEventArgs e)
+        {
+            isCapturingSearchKey = true;
+            TxtSearchHotkey.Text = "请按任意键...";
+            Focus();
+        }
+
+        private void CaptureSearchHotkey_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            e.Handled = true;
+            isCapturingSearchKey = false;
+
+            if (e.Key == Key.Escape)
+            {
+                UpdateSearchHotkeyDisplay();
+                return;
+            }
+
+            Key key = e.Key;
+            if (key == Key.System)
+            {
+                key = e.SystemKey;
+            }
+
+            if (key == Key.LWin || key == Key.RWin || key == Key.LeftShift || key == Key.RightShift ||
+                key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt)
+            {
+                TxtSearchHotkey.Text = "请按一个非修饰键 (含修饰键)...";
+                isCapturingSearchKey = true;
+                return;
+            }
+
+            uint modifiers = 0;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= 0x0001;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= 0x0002;
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= 0x0004;
+
+            if (modifiers == 0)
+            {
+                modifiers = 0x0005;
+                key = Key.Space;
+            }
+
+            uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
+            searchModifiers = modifiers;
+            searchKey = vk;
+
+            AppSettings.Instance.SearchHotkeyModifiers = (int)modifiers;
+            AppSettings.Instance.SearchHotkeyKey = (int)vk;
+            AppSettings.Instance.Save();
+
+            UnregisterHotKey(windowHandle, SEARCH_HOTKEY_ID);
+            RegisterHotKey(windowHandle, SEARCH_HOTKEY_ID, searchModifiers, searchKey);
+
+            UpdateSearchHotkeyDisplay();
         }
 
         public void CreateAHK(string folderPath)
@@ -2212,7 +2445,7 @@ return
             AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
-            iconCache.Clear();
+            IconHelper.ClearCache();
             folderCache.Clear();
             folderCacheTime.Clear();
         }
@@ -2349,7 +2582,7 @@ return
                 var highlighted = items[_menuIndex];
                 if (highlighted != null)
                 {
-                    highlighted.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3));
+                    highlighted.Background = new System.Windows.Media.SolidColorBrush(GetAccentColor());
                     highlighted.Foreground = System.Windows.Media.Brushes.White;
                     highlighted.Focus();
                 }
@@ -2584,20 +2817,18 @@ return
                 return;
             }
 
-            // 搜索弹窗打开时，屏蔽主窗口快捷键，但允许文本输入
-            if (SearchOverlay.Visibility == Visibility.Visible)
+            if (isCapturingSearchKey)
             {
-                if (e.Key == Key.P && (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
-                {
-                    CloseSearch();
-                    e.Handled = true;
-                }
-                else if (e.Key == Key.Escape)
-                {
-                    CloseSearch();
-                    e.Handled = true;
-                }
-                // 不屏蔽其他按键，让搜索框正常接收文字输入
+                CaptureSearchHotkey_KeyDown(sender, e);
+                e.Handled = true;
+                return;
+            }
+
+            // 设置面板打开时, Esc 关闭设置返回主页面
+            if (SettingsPanel.Visibility == Visibility.Visible && e.Key == Key.Escape)
+            {
+                ToggleSettingsPanel();
+                e.Handled = true;
                 return;
             }
 
@@ -2609,7 +2840,7 @@ return
             // Ctrl+P: 打开搜索
             if (e.Key == Key.P && (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
             {
-                OpenSearch();
+                GetSearchWindow().ShowSearch();
                 e.Handled = true;
                 return;
             }
@@ -2906,27 +3137,12 @@ return
         }
 
         // ========================
-        // 搜索功能
+        // 搜索功能 (独立 SearchWindow)
         // ========================
 
         private void BtnSearch_Click(object sender, RoutedEventArgs e)
         {
-            OpenSearch();
-        }
-
-        private void OpenSearch()
-        {
-            SearchOverlay.Visibility = Visibility.Visible;
-            SearchTextBox.Text = "";
-            SearchResultsList.Items.Clear();
-            ShowRecentFiles();
-            SearchTextBox.Focus();
-        }
-
-        private void CloseSearch()
-        {
-            SearchOverlay.Visibility = Visibility.Collapsed;
-            Focus();
+            GetSearchWindow().ShowSearch();
         }
 
         private void AddToRecentFiles(string path)
@@ -2937,269 +3153,6 @@ return
             if (recent.Count > 20)
                 recent.RemoveRange(20, recent.Count - 20);
             AppSettings.Instance.Save();
-        }
-
-        private void ShowRecentFiles()
-        {
-            SearchResultsList.Items.Clear();
-            var recent = AppSettings.Instance.RecentFiles;
-            int count = 0;
-
-            foreach (string path in recent)
-            {
-                if (count >= 5) break;
-                if (!File.Exists(path) && !Directory.Exists(path)) continue;
-
-                bool isDir = Directory.Exists(path);
-                string name = Path.GetFileName(path);
-                string displayName = name;
-                if (!isDir && AppSettings.Instance.HideExtensions && name.Contains('.'))
-                {
-                    int dotIndex = name.LastIndexOf('.');
-                    displayName = name.Substring(0, dotIndex);
-                }
-
-                int? parentFolder = GetParentFolderNum(path);
-                string alias = parentFolder.HasValue
-                    ? (AppSettings.Instance.FolderAliases.TryGetValue(parentFolder.Value.ToString(), out var a) ? a : $"[{parentFolder}]")
-                    : "";
-                string tag = parentFolder.HasValue ? $"[{parentFolder}] {alias}" : "";
-
-                SearchResultsList.Items.Add(new SearchResultItem
-                {
-                    Icon = GetIcon(path, isDir, 20),
-                    Name = displayName,
-                    FullPath = path,
-                    FolderTag = tag,
-                    IsDirectory = isDir
-                });
-                count++;
-            }
-
-            if (SearchResultsList.Items.Count > 0)
-                SearchResultsList.SelectedIndex = 0;
-        }
-
-        private void BtnCloseSearch_Click(object sender, RoutedEventArgs e)
-        {
-            CloseSearch();
-        }
-
-        private void SearchOverlay_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            CloseSearch();
-        }
-
-        private void SearchBorder_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            e.Handled = true; // 阻止点击穿透到背景
-        }
-
-        private void SearchTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-        {
-            string query = SearchTextBox.Text.Trim();
-            SearchResultsList.Items.Clear();
-
-            if (string.IsNullOrEmpty(query))
-            {
-                ShowRecentFiles();
-                return;
-            }
-
-            string queryLower = query.ToLowerInvariant();
-            var recentSet = new HashSet<string>(AppSettings.Instance.RecentFiles, StringComparer.OrdinalIgnoreCase);
-            var recentResults = new List<SearchResultItem>();
-            var otherResults = new List<SearchResultItem>();
-
-            for (int i = 0; i <= 9; i++)
-            {
-                string folderPath = Path.Combine(basePath, i.ToString());
-                if (!Directory.Exists(folderPath)) continue;
-
-                string alias = AppSettings.Instance.FolderAliases.TryGetValue(i.ToString(), out var a) ? a : $"[{i}]";
-                string tag = $"[{i}] {alias}";
-
-                try
-                {
-                    foreach (string dir in Directory.GetDirectories(folderPath))
-                    {
-                        string name = Path.GetFileName(dir);
-                        if (name.ToLowerInvariant().Contains(queryLower))
-                        {
-                            var item = new SearchResultItem
-                            {
-                                Icon = GetIcon(dir, true, 20),
-                                Name = name,
-                                FullPath = dir,
-                                FolderTag = tag,
-                                IsDirectory = true
-                            };
-                            if (recentSet.Contains(dir))
-                                recentResults.Add(item);
-                            else
-                                otherResults.Add(item);
-                        }
-                    }
-
-                    foreach (string file in Directory.GetFiles(folderPath))
-                    {
-                        string name = Path.GetFileName(file);
-                        string displayName = name;
-                        if (AppSettings.Instance.HideExtensions && name.Contains('.'))
-                        {
-                            int dotIndex = name.LastIndexOf('.');
-                            displayName = name.Substring(0, dotIndex);
-                        }
-                        if (displayName.ToLowerInvariant().Contains(queryLower) || name.ToLowerInvariant().Contains(queryLower))
-                        {
-                            if (AppSettings.Instance.HideDesktopIni && name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
-                                continue;
-
-                            var item = new SearchResultItem
-                            {
-                                Icon = GetIcon(file, false, 20),
-                                Name = displayName,
-                                FullPath = file,
-                                FolderTag = tag,
-                                IsDirectory = false
-                            };
-                            if (recentSet.Contains(file))
-                                recentResults.Add(item);
-                            else
-                                otherResults.Add(item);
-                        }
-                    }
-                }
-                catch { }
-            }
-
-            // 按最近使用顺序排列（recentResults 中按 RecentFiles 的顺序排序）
-            var orderedRecent = recentResults
-                .OrderBy(r => AppSettings.Instance.RecentFiles.IndexOf(r.FullPath))
-                .ToList();
-
-            foreach (var item in orderedRecent)
-                SearchResultsList.Items.Add(item);
-            foreach (var item in otherResults)
-                SearchResultsList.Items.Add(item);
-
-            if (SearchResultsList.Items.Count > 0)
-            {
-                SearchResultsList.SelectedIndex = 0;
-            }
-        }
-
-        private void SearchTextBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-            {
-                CloseSearch();
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Down)
-            {
-                if (SearchResultsList.Items.Count > 0)
-                {
-                    SearchResultsList.Focus();
-                    if (SearchResultsList.SelectedIndex < 0)
-                        SearchResultsList.SelectedIndex = 0;
-                    else if (SearchResultsList.SelectedIndex < SearchResultsList.Items.Count - 1)
-                        SearchResultsList.SelectedIndex++;
-                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
-                }
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Enter)
-            {
-                OpenSearchResult();
-                e.Handled = true;
-            }
-        }
-
-        private void SearchResultsList_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == Key.Escape)
-            {
-                CloseSearch();
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Enter)
-            {
-                OpenSearchResult();
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Up)
-            {
-                if (SearchResultsList.SelectedIndex > 0)
-                    SearchResultsList.SelectedIndex--;
-                else
-                    SearchTextBox.Focus();
-                if (SearchResultsList.SelectedItem != null)
-                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
-                e.Handled = true;
-            }
-            else if (e.Key == Key.Down)
-            {
-                if (SearchResultsList.SelectedIndex < SearchResultsList.Items.Count - 1)
-                    SearchResultsList.SelectedIndex++;
-                if (SearchResultsList.SelectedItem != null)
-                    SearchResultsList.ScrollIntoView(SearchResultsList.SelectedItem);
-                e.Handled = true;
-            }
-        }
-
-        private void SearchResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            OpenSearchResult();
-        }
-
-        private void OpenSearchResult()
-        {
-            if (SearchResultsList.SelectedItem is SearchResultItem item)
-            {
-                AddToRecentFiles(item.FullPath);
-                CloseSearch();
-
-                if (item.IsDirectory)
-                {
-                    // 如果是 0-9 文件夹，直接导航
-                    string folderName = Path.GetFileName(item.FullPath);
-                    if (int.TryParse(folderName, out int folderNum) && folderNum >= 0 && folderNum <= 9)
-                    {
-                        NavigateToFolder(folderNum);
-                        return;
-                    }
-
-                    // 其他子文件夹：找到所属的 0-9 文件夹并导航
-                    int? parentFolder = GetParentFolderNum(item.FullPath);
-                    if (parentFolder.HasValue)
-                    {
-                        NavigateToFolder(parentFolder.Value);
-                        // 导航后选中该子文件夹
-                        Dispatcher.BeginInvoke(new Action(() =>
-                        {
-                            SelectItemByPath(item.FullPath);
-                        }), System.Windows.Threading.DispatcherPriority.Loaded);
-                    }
-                    else
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = item.FullPath,
-                            UseShellExecute = true
-                        });
-                    }
-                }
-                else
-                {
-                    OpenItem(new FileItem
-                    {
-                        Name = item.Name,
-                        FullPath = item.FullPath,
-                        IsDirectory = false
-                    });
-                }
-            }
         }
 
         private int? GetParentFolderNum(string path)
