@@ -111,14 +111,6 @@ namespace Lightspeed_wpf
         [DllImport("imm32.dll")]
         private static extern bool ImmDisableIME(IntPtr hkl);
 
-        // --- DWM 系统背景 (Win11 模糊) ---
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
-        private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
-        private const int DWMSBT_NONE = 1;
-        private const int DWMSBT_MAINWINDOW = 2;
-        private const int DWMSBT_TRANSIENTWINDOW = 3;
-
         // --- XInput 手柄支持 ---
         [DllImport("xinput1_4.dll", EntryPoint = "XInputGetState")]
         private static extern int XInputGetState14(int dwUserIndex, ref XINPUT_STATE pState);
@@ -279,7 +271,11 @@ namespace Lightspeed_wpf
             notifyIcon.Icon = LoadAppIcon() ?? SystemIcons.Application;
             notifyIcon.Text = "Lightspeed";
             notifyIcon.Visible = true;
-            notifyIcon.Click += (s, e) => TrayIcon_Click();
+            notifyIcon.MouseClick += (s, e) =>
+            {
+                if (e.Button == Forms.MouseButtons.Left)
+                    TrayIcon_Click();
+            };
             notifyIcon.DoubleClick += (s, e) => TrayIcon_Click();
 
             var contextMenu = new Forms.ContextMenuStrip();
@@ -861,22 +857,8 @@ namespace Lightspeed_wpf
             else
                 RbTrayMain.IsChecked = true;
 
-            // 透明度 / 模糊模式
-            _loadingSettings = true;
-            OpacitySlider.Value = AppSettings.Instance.WindowOpacity;
-            if (AppSettings.Instance.BlurMode == 1)
-                RbBlurMode.IsChecked = true;
-            else
-                RbTransparencyMode.IsChecked = true;
+            this.Background = System.Windows.Media.Brushes.Transparent;
             _loadingSettings = false;
-            ApplyOpacity();
-            ApplyBlurEffect();
-
-            // 窗口边框
-            TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
-            SliderBorderThickness.Value = AppSettings.Instance.WindowBorderThickness;
-            TxtBorderThickness.Text = AppSettings.Instance.WindowBorderThickness.ToString();
-            ApplyWindowBorder();
         }
 
         private void ApplyWindowSize()
@@ -924,131 +906,9 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void ApplyOpacity()
-        {
-            double opacity = Math.Clamp(AppSettings.Instance.WindowOpacity, 0.2, 1.0);
-            this.Opacity = opacity;
-            if (TxtOpacityValue != null)
-            {
-                TxtOpacityValue.Text = ((int)Math.Round(opacity * 100)) + "%";
-            }
-        }
-
-        private void ApplyBlurEffect()
-        {
-            bool blur = AppSettings.Instance.BlurMode == 1;
-            int backdrop = blur ? DWMSBT_TRANSIENTWINDOW : DWMSBT_NONE;
-            try
-            {
-                DwmSetWindowAttribute(windowHandle, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, sizeof(int));
-            }
-            catch { }
-
-            // 模糊模式: 窗口与主要面板背景改为半透明, 让桌面透出 (分层窗口上 DWM 背景可能不合成, 退化为玻璃观感)
-            System.Windows.Media.Color baseColor = blur ? System.Windows.Media.Color.FromArgb(0xD9, 0x1E, 0x1E, 0x1E) : System.Windows.Media.Color.FromRgb(0x1E, 0x1E, 0x1E);
-            System.Windows.Media.Color barColor = blur ? System.Windows.Media.Color.FromArgb(0xD9, 0x25, 0x25, 0x25) : System.Windows.Media.Color.FromRgb(0x25, 0x25, 0x25);
-            this.Background = new SolidColorBrush(baseColor);
-            TitleBarGrid.Background = new SolidColorBrush(baseColor);
-            BottomBarBorder.Background = new SolidColorBrush(barColor);
-        }
-
-        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (_loadingSettings) return;
-            double value = Math.Clamp(OpacitySlider.Value, 0.2, 1.0);
-            AppSettings.Instance.WindowOpacity = value;
-            ApplyOpacity();
-            AppSettings.Instance.Save();
-        }
-
-        private void RbBlurMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
-            {
-                int mode = int.Parse(rb.Tag.ToString()!);
-                AppSettings.Instance.BlurMode = mode;
-                AppSettings.Instance.Save();
-                ApplyBlurEffect();
-            }
-        }
-
-        private void ApplyWindowBorder()
-        {
-            int thickness = AppSettings.Instance.WindowBorderThickness;
-            WindowBorder.BorderThickness = new Thickness(thickness);
-            try
-            {
-                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(AppSettings.Instance.WindowBorderColor);
-                WindowBorder.BorderBrush = new SolidColorBrush(color);
-            }
-            catch
-            {
-                WindowBorder.BorderBrush = System.Windows.Media.Brushes.Transparent;
-            }
-            UpdateAccentResources();
-        }
-
         private System.Windows.Media.Color GetAccentColor()
         {
-            try
-            {
-                return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(AppSettings.Instance.WindowBorderColor);
-            }
-            catch
-            {
-                return System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3);
-            }
-        }
-
-        private void UpdateAccentResources()
-        {
-            var c = GetAccentColor();
-            var app = System.Windows.Application.Current;
-            if (app == null) return;
-            app.Resources["AccentBrush"] = new SolidColorBrush(c);
-            app.Resources["AccentSelectedBrush"] = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0x59, c.R, c.G, c.B));
-        }
-
-        private void BorderColorPreset_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is WpfButton btn && btn.Tag is string colorHex)
-            {
-                AppSettings.Instance.WindowBorderColor = colorHex;
-                TxtBorderColor.Text = colorHex;
-                AppSettings.Instance.Save();
-                ApplyWindowBorder();
-            }
-        }
-
-        private void TxtBorderColor_LostFocus(object sender, RoutedEventArgs e)
-        {
-            string text = TxtBorderColor.Text?.Trim() ?? "";
-            if (string.IsNullOrEmpty(text))
-            {
-                TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
-                return;
-            }
-            try
-            {
-                var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(text);
-                AppSettings.Instance.WindowBorderColor = text;
-                AppSettings.Instance.Save();
-                ApplyWindowBorder();
-            }
-            catch
-            {
-                TxtBorderColor.Text = AppSettings.Instance.WindowBorderColor;
-            }
-        }
-
-        private void SliderBorderThickness_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            if (_loadingSettings) return;
-            int thickness = (int)Math.Round(SliderBorderThickness.Value);
-            AppSettings.Instance.WindowBorderThickness = thickness;
-            TxtBorderThickness.Text = thickness.ToString();
-            ApplyWindowBorder();
-            AppSettings.Instance.Save();
+            return System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3);
         }
 
         private void RbWindowMode_Changed(object sender, RoutedEventArgs e)
@@ -1477,12 +1337,20 @@ namespace Lightspeed_wpf
         {
             for (int i = 0; i < folderButtons.Count; i++)
             {
-                folderButtons[i].Background = (i == selectedFolder)
-                    ? new SolidColorBrush(GetAccentColor())
-                    : new SolidColorBrush(System.Windows.Media.Color.FromRgb(61, 61, 61));
-                folderButtons[i].Foreground = (i == selectedFolder)
-                    ? new SolidColorBrush(Colors.White)
-                    : new SolidColorBrush(Colors.White);
+                if (i == selectedFolder)
+                {
+                    var accent = GetAccentColor();
+                    folderButtons[i].Background = new SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(0x88, accent.R, accent.G, accent.B));
+                    folderButtons[i].Foreground = new SolidColorBrush(Colors.White);
+                }
+                else
+                {
+                    folderButtons[i].Background = new SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(0x22, 0xFF, 0xFF, 0xFF));
+                    folderButtons[i].Foreground = new SolidColorBrush(
+                        System.Windows.Media.Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF));
+                }
             }
         }
 

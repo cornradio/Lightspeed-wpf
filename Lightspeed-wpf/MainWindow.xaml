@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:Lightspeed_wpf"
         Title="Lightspeed" 
         Height="800" Width="500"
-        Background="#1E1E1E"
+        Background="Transparent"
         WindowStyle="None"
         AllowsTransparency="True"
         WindowStartupLocation="CenterScreen"
@@ -17,11 +17,12 @@
     <Window.Resources>
         <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <local:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
+
         <Style x:Key="FolderButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="40"/>
             <Setter Property="Height" Value="35"/>
             <Setter Property="Margin" Value="2"/>
-            <Setter Property="Background" Value="#3D3D3D"/>
+            <Setter Property="Background" Value="#22FFFFFF"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="14"/>
@@ -30,16 +31,16 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" BorderThickness="2" BorderBrush="Transparent">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8" BorderThickness="1" BorderBrush="#22FFFFFF">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="Background" Value="#33FFFFFF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#66FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#4D4D4D"/>
+                                <Setter TargetName="border" Property="Background" Value="#44FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -51,8 +52,8 @@
             <Setter Property="Width" Value="26"/>
             <Setter Property="Height" Value="22"/>
             <Setter Property="Margin" Value="1"/>
-            <Setter Property="Background" Value="#3D3D3D"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Foreground" Value="#CCFFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -60,16 +61,16 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="3" BorderThickness="1" BorderBrush="Transparent">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" BorderThickness="0">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5D5D5D"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="Background" Value="#33FFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#4D4D4D"/>
+                                <Setter TargetName="border" Property="Background" Value="#44FFFFFF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -83,19 +84,19 @@
             <Setter Property="Margin" Value="2,0"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#999999"/>
+            <Setter Property="Foreground" Value="#99FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#2A2A2A"/>
+                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF"/>
                                 <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -105,18 +106,18 @@
         </Style>
 
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="26"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Margin" Value="2"/>
-            <Setter Property="Padding" Value="6,0"/>
+            <Setter Property="Padding" Value="10,0"/>
             <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Background" Value="#3D3D3D"/>
+            <Setter Property="Background" Value="#22FFFFFF"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
@@ -124,22 +125,22 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#505050"/>
+                    <Setter Property="Background" Value="#33FFFFFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="40"/>
-            <Setter Property="Height" Value="30"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="28"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Foreground" Value="#99FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
@@ -147,7 +148,8 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3D3D3D"/>
+                    <Setter Property="Background" Value="#22FFFFFF"/>
+                    <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -156,6 +158,7 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#E81123"/>
+                    <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -165,27 +168,27 @@
             <Setter Property="Height" Value="26"/>
             <Setter Property="Margin" Value="2,0"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#999999"/>
+            <Setter Property="Foreground" Value="#99FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                        <Border x:Name="bg" Background="Transparent" CornerRadius="6">
                             <Grid>
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Border x:Name="underline" Height="2" VerticalAlignment="Bottom" Background="{DynamicResource AccentBrush}" CornerRadius="1" Margin="6,0" Visibility="Collapsed"/>
+                                <Border x:Name="underline" Height="2" VerticalAlignment="Bottom" Background="#AAFFFFFF" CornerRadius="1" Margin="6,0" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="#2A2A2A"/>
+                                <Setter TargetName="bg" Property="Background" Value="#22FFFFFF"/>
                                 <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="underline" Property="Visibility" Value="Visible"/>
-                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -196,13 +199,11 @@
         <Style TargetType="ListViewItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="5,5"/>
+            <Setter Property="Padding" Value="8,6"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderThickness="0" 
-                                Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0" CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -210,7 +211,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2D2D2D"/>
+                    <Setter Property="Background" Value="#22FFFFFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -218,13 +219,11 @@
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Padding" Value="6"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderThickness="0" 
-                                Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0" CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -232,7 +231,7 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2D2D2D"/>
+                    <Setter Property="Background" Value="#22FFFFFF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -240,13 +239,12 @@
         <Style TargetType="ListViewItem" x:Key="FileListViewItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Margin" Value="2,1"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderThickness="0" 
-                                Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0" CornerRadius="8" Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -254,13 +252,13 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2D2D2D"/>
+                    <Setter Property="Background" Value="#22FFFFFF"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
+                    <Setter Property="Background" Value="#33FFFFFF"/>
                 </Trigger>
                 <DataTrigger Binding="{Binding JustOpened}" Value="True">
-                    <Setter Property="Background" Value="#2E7D32"/>
+                    <Setter Property="Background" Value="#442E7D32"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -268,13 +266,11 @@
         <Style TargetType="ListBoxItem" x:Key="IconListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Padding" Value="8"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border Background="{TemplateBinding Background}" 
-                                BorderThickness="0" 
-                                Padding="{TemplateBinding Padding}">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0" CornerRadius="10" Padding="{TemplateBinding Padding}">
                             <ContentPresenter/>
                         </Border>
                     </ControlTemplate>
@@ -282,106 +278,104 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2D2D2D"/>
+                    <Setter Property="Background" Value="#22FFFFFF"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
+                    <Setter Property="Background" Value="#33FFFFFF"/>
                 </Trigger>
                 <DataTrigger Binding="{Binding JustOpened}" Value="True">
-                    <Setter Property="Background" Value="#2E7D32"/>
+                    <Setter Property="Background" Value="#442E7D32"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
-       <!-- 1. 滑块样式 (Thumb) -->
-<Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
-    <Setter Property="Template">
-        <Setter.Value>
-            <ControlTemplate TargetType="Thumb">
-                <!-- 这里的 Background 是滑块本身的颜色 -->
-                <Border Background="#4D4D4D" CornerRadius="5" Margin="2,0"/>
-            </ControlTemplate>
-        </Setter.Value>
-    </Setter>
-</Style>
+        <Style x:Key="ScrollBarThumbStyle" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border Background="#66FFFFFF" CornerRadius="4" Margin="1,0"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-<!-- 2. 透明的按钮样式 (用于隐藏上下箭头或自定义箭头) -->
-<Style x:Key="InvisibleThumbStyle" TargetType="RepeatButton">
-    <Setter Property="Template">
-        <Setter.Value>
-            <ControlTemplate TargetType="RepeatButton">
-                <Border Background="Transparent" />
-            </ControlTemplate>
-        </Setter.Value>
-    </Setter>
-</Style>
+        <Style x:Key="InvisibleThumbStyle" TargetType="RepeatButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-<!-- 3. ScrollBar 主样式 -->
-<Style TargetType="ScrollBar">
-    <Setter Property="Background" Value="#2D2D2D"/>
-    <Setter Property="Width" Value="10"/>
-    <Setter Property="Template">
-        <Setter.Value>
-            <ControlTemplate TargetType="ScrollBar">
-                <Grid x:Name="Bg" Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
-                    <!-- Track 是滑行的轨道 -->
-                    <Track x:Name="PART_Track" IsDirectionReversed="true" IsEnabled="{TemplateBinding IsEnabled}">
-                        <!-- 轨道上方的透明区域 -->
-                        <Track.DecreaseRepeatButton>
-                            <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageUpCommand}" />
-                        </Track.DecreaseRepeatButton>
-                        <!-- 轨道下方的透明区域 -->
-                        <Track.IncreaseRepeatButton>
-                            <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageDownCommand}" />
-                        </Track.IncreaseRepeatButton>
-                        <!-- 中间的滑块 -->
-                        <Track.Thumb>
-                            <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
-                        </Track.Thumb>
-                    </Track>
-                </Grid>
-            </ControlTemplate>
-        </Setter.Value>
-    </Setter>
-</Style>
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent" SnapsToDevicePixels="true">
+                            <Track x:Name="PART_Track" IsDirectionReversed="true" IsEnabled="{TemplateBinding IsEnabled}">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageUpCommand}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource InvisibleThumbStyle}" Command="{x:Static ScrollBar.PageDownCommand}" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource ScrollBarThumbStyle}" />
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style TargetType="ListView">
-            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
         <Style TargetType="ListBox">
-            <Setter Property="Background" Value="#1E1E1E"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
-<Style TargetType="ContextMenu">
-    <Setter Property="Background" Value="#2D2D2D"/>
-    <Setter Property="Foreground" Value="White"/>
-    <Setter Property="BorderBrush" Value="#4D4D4D"/>
-    <Setter Property="BorderThickness" Value="1"/>
-    <!-- 关键点 1：消除默认 Padding -->
-    <Setter Property="Padding" Value="0"/>
-    <Setter Property="Template">
-        <Setter.Value>
-            <ControlTemplate TargetType="ContextMenu">
-                <!-- 关键点 2：使用 Border 包装 ItemsPresenter，并绑定背景色 -->
-                <Border Background="{TemplateBinding Background}"
-                        BorderBrush="{TemplateBinding BorderBrush}"
-                        BorderThickness="{TemplateBinding BorderThickness}"
-                        SnapsToDevicePixels="True">
-                    <ScrollViewer CanContentScroll="True">
-                        <!-- 确保内容没有默认 Margin -->
-                        <ItemsPresenter Margin="0"/>
-                    </ScrollViewer>
-                </Border>
-            </ControlTemplate>
-        </Setter.Value>
-    </Setter>
-</Style>
+        <Style TargetType="ContextMenu">
+            <Setter Property="Background" Value="#E61A1A1A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#66FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer CanContentScroll="True">
+                                <ItemsPresenter Margin="0"/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <Border x:Name="WindowBorder" BorderThickness="0" BorderBrush="Transparent">
+    <Border x:Name="WindowBorder" BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
+    <Border x:Name="RootChrome"
+            Background="#CC1A1A1A"
+            BorderBrush="#66FFFFFF"
+            BorderThickness="1"
+            CornerRadius="14"
+            Margin="6"
+            ClipToBounds="True">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -389,39 +383,41 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Background="#1E1E1E" x:Name="TitleBarGrid" Height="30">
+        <Grid Grid.Row="0" Background="Transparent" x:Name="TitleBarGrid" Height="36" Margin="8,6,6,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="Lightspeed" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="Bold" FontSize="12"/>
+            <TextBlock Grid.Column="0" Text="Lightspeed" Foreground="#CCFFFFFF" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold" FontSize="12"/>
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button x:Name="Btn0" Content="0" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn1" Content="1" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn2" Content="2" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn3" Content="3" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn4" Content="4" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn5" Content="5" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn6" Content="6" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn7" Content="7" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn8" Content="8" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-                <Button x:Name="Btn9" Content="9" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
-            </StackPanel>
+            <Border Grid.Column="1" Background="#14FFFFFF" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="4,2">
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="Btn0" Content="0" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn1" Content="1" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn2" Content="2" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn3" Content="3" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn4" Content="4" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn5" Content="5" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn6" Content="6" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn7" Content="7" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn8" Content="8" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                    <Button x:Name="Btn9" Content="9" Style="{StaticResource TitleBarFolderButtonStyle}" Click="FolderButton_Click"/>
+                </StackPanel>
+            </Border>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <Button x:Name="BtnSearch" Content="🔍" Style="{StaticResource SideButtonStyle}" Click="BtnSearch_Click" ToolTip="搜索 (Ctrl+P)" Height="22" Width="26" FontSize="12"/>
-                <Button Content="⚊" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
-                <Button Content="🔳" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
-                <Button Content="✖" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnSearch" Content="🔍" Style="{StaticResource SideButtonStyle}" Click="BtnSearch_Click" ToolTip="搜索 (Ctrl+P)" Height="26" Width="28" FontSize="12"/>
+                <Button Content="—" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
+                <Button Content="□" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
+                <Button Content="✕" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" AllowDrop="True" Drop="Grid_Drop" DragOver="Grid_DragOver">
+        <Grid Grid.Row="1" AllowDrop="True" Drop="Grid_Drop" DragOver="Grid_DragOver" Margin="6,4,6,0">
             <ListView x:Name="FileListView" 
-                      Background="#1E1E1E" 
+                      Background="Transparent" 
                       Foreground="White"
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -440,14 +436,14 @@
                             </Grid.ColumnDefinitions>
                             <Image Grid.Column="0" Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
                             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White" Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-                            <TextBox x:Name="EditTextBox" Grid.Column="1" VerticalAlignment="Center" Background="#3D3D3D" Foreground="White" BorderThickness="0" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}" LostFocus="EditTextBox_LostFocus" PreviewKeyDown="EditTextBox_PreviewKeyDown"/>
+                            <TextBox x:Name="EditTextBox" Grid.Column="1" VerticalAlignment="Center" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="4,2" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}" LostFocus="EditTextBox_LostFocus" PreviewKeyDown="EditTextBox_PreviewKeyDown"/>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
 
             <ListBox x:Name="IconListView" 
-                      Background="#1E1E1E" 
+                      Background="Transparent" 
                       Foreground="White"
                       BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -478,7 +474,7 @@
                                        Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
                             <TextBox TextWrapping="Wrap" 
                                      TextAlignment="Center" 
-                                     Background="#3D3D3D" 
+                                     Background="#33FFFFFF" 
                                      Foreground="White"
                                      MaxWidth="80"
                                      FontSize="11"
@@ -492,15 +488,15 @@
             </ListBox>
 
             <Border x:Name="SettingsPanel"
-                    Background="#2D2D2D"
+                    Background="#E61A1A1A"
                     Visibility="Collapsed"
                     Padding="20"
                     PreviewMouseLeftButtonDown="SettingsPanel_PreviewMouseLeftButtonDown">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#2D2D2D">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="Transparent">
                     <StackPanel>
-                        <TextBlock Text="设置" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+                        <TextBlock Text="设置" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,20"/>
 
-                        <TextBlock Text="通用设置" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="通用设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <CheckBox x:Name="ChkAutoStartWithWindows" Content="开机自启动" Foreground="White" Margin="0,5" Checked="ChkAutoStartWithWindows_Changed" Unchecked="ChkAutoStartWithWindows_Changed"/>
                         <CheckBox x:Name="ChkTouchMode" Content="触控模式 (顶部/底部栏放大 2 倍)" Foreground="White" Margin="0,5" Checked="ChkTouchMode_Changed" Unchecked="ChkTouchMode_Changed"/>
 
@@ -510,33 +506,33 @@
                             <RadioButton x:Name="RbTraySearch" Content="打开搜索页面" Foreground="White" GroupName="TrayClick" Checked="RbTrayClick_Changed" Tag="1"/>
                         </StackPanel>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <TextBlock Text="快捷键设置" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="快捷键设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <TextBlock Text="当前快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtHotkey" Text="Alt+S" Foreground="#6B9FFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="修改快捷键" Margin="10,0,0,0" Click="BtnCaptureHotkey_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="10,5"/>
+                            <TextBlock x:Name="TxtHotkey" Text="Alt+S" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <Button Content="修改快捷键" Margin="10,0,0,0" Click="BtnCaptureHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <TextBlock Text="搜索快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtSearchHotkey" Text="Alt+Shift+Space" Foreground="#6B9FFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="修改搜索快捷键" Margin="10,0,0,0" Click="BtnCaptureSearchHotkey_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="10,5"/>
+                            <TextBlock x:Name="TxtSearchHotkey" Text="Alt+Shift+Space" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <Button Content="修改搜索快捷键" Margin="10,0,0,0" Click="BtnCaptureSearchHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
                         </StackPanel>
                         <CheckBox x:Name="ChkDisableInFullscreen" Content="全屏程序中禁用快捷键" Foreground="White" Margin="0,5" Checked="ChkDisableInFullscreen_Changed" Unchecked="ChkDisableInFullscreen_Changed"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                             <TextBlock Text="手柄快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtGamepadHotkey" Text="未设置" Foreground="#6B9FFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="录入手柄" Margin="10,0,0,0" Click="BtnCaptureGamepadHotkey_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="8,4" FontSize="11"/>
-                            <Button Content="清除" Margin="5,0,0,0" Click="BtnClearGamepadHotkey_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="8,4" FontSize="11"/>
+                            <TextBlock x:Name="TxtGamepadHotkey" Text="未设置" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <Button Content="录入手柄" Margin="10,0,0,0" Click="BtnCaptureGamepadHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="8,4" FontSize="11"/>
+                            <Button Content="清除" Margin="5,0,0,0" Click="BtnClearGamepadHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="8,4" FontSize="11"/>
                         </StackPanel>
-                        <TextBlock Text="点击录入，同时按下至少3个键即可 (支持 LT/RT 和方向键)" Foreground="#666666" FontSize="10" Margin="0,3,0,0"/>
+                        <TextBlock Text="点击录入，同时按下至少3个键即可 (支持 LT/RT 和方向键)" Foreground="#66FFFFFF" FontSize="10" Margin="0,3,0,0"/>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <TextBlock Text="快速启动" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <TextBlock Text="快捷键仅在桌面或任务栏获得焦点时生效，避免在其他应用中误触。" Foreground="#666666" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <TextBlock Text="快速启动" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="快捷键仅在桌面或任务栏获得焦点时生效，避免在其他应用中误触。" Foreground="#66FFFFFF" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                             <RadioButton x:Name="RbQuickLaunchOff" Content="关闭" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="0"/>
                             <RadioButton x:Name="RbQuickLaunchAHK" Content="AutoHotkey" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="1"/>
@@ -553,38 +549,33 @@
                             </UniformGrid>
                             <TextBlock Margin="0,5">
                                 <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate">
-                                    <TextBlock Text="下载 AHK (懒人包)" Foreground="#6B9FFF"/>
+                                    <TextBlock Text="下载 AHK (懒人包)" Foreground="#CCFFFFFF"/>
                                 </Hyperlink>
                             </TextBlock>
                         </StackPanel>
 
                         <StackPanel x:Name="PanelNativeControls" Visibility="Collapsed">
-                            <TextBlock Text="Alt+0~9 打开文件夹；按住数字再按文件名首字母启动。启动时显示图标 HUD。" Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <TextBlock Text="Alt+0~9 打开文件夹；按住数字再按文件名首字母启动。启动时显示图标 HUD。" Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
                             <Button Content="重新加载快捷键绑定" Style="{StaticResource SettingsButtonStyle}" Click="BtnReloadNativeBindings_Click" HorizontalAlignment="Left" Padding="12,6"/>
                         </StackPanel>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <!-- <TextBlock Text="Folder Operations" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <Button Content="Open in Explorer" Style="{StaticResource SettingsButtonStyle}" Click="BtnOpenInExplorer_Click"/>
-
-                        <Separator Background="#3D3D3D" Margin="0,15"/> -->
-
-                        <TextBlock Text="Display Settings" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="显示设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <CheckBox x:Name="ChkHideDesktopIni" Content="隐藏 desktop.ini 文件" Foreground="White" Margin="0,5" Checked="ChkHideDesktopIni_Changed" Unchecked="ChkHideDesktopIni_Changed"/>
                         <CheckBox x:Name="ChkHideExtensions" Content="隐藏文件扩展名" Foreground="White" Margin="0,5" Checked="ChkHideExtensions_Changed" Unchecked="ChkHideExtensions_Changed"/>
                         <CheckBox x:Name="ChkSingleClickOpen" Content="单击打开文件/文件夹" Foreground="White" Margin="0,5" Checked="ChkSingleClickOpen_Changed" Unchecked="ChkSingleClickOpen_Changed"/>
                         
-                        <TextBlock Text="Icon Size (List Mode)" Foreground="White" Margin="0,15,0,5"/>
+                        <TextBlock Text="图标大小 (列表)" Foreground="White" Margin="0,15,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <Slider x:Name="SliderIconSize" Width="200" Minimum="16" Maximum="64" Value="30" ValueChanged="SliderIconSize_ValueChanged"/>
-                            <TextBox x:Name="TxtIconSize" Width="45" Margin="10,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="30" LostFocus="TxtIconSize_LostFocus" KeyDown="TxtIconSize_KeyDown"/>
+                            <TextBox x:Name="TxtIconSize" Width="45" Margin="10,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="30" LostFocus="TxtIconSize_LostFocus" KeyDown="TxtIconSize_KeyDown"/>
                         </StackPanel>
 
-                        <TextBlock Text="Icon Size (Icon Mode)" Foreground="White" Margin="0,10,0,5"/>
+                        <TextBlock Text="图标大小 (网格)" Foreground="White" Margin="0,10,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <Slider x:Name="SliderIconSizeIcon" Width="200" Minimum="16" Maximum="128" Value="60" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
-                            <TextBox x:Name="TxtIconSizeIcon" Width="45" Margin="10,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="60" LostFocus="TxtIconSizeIcon_LostFocus" KeyDown="TxtIconSizeIcon_KeyDown"/>
+                            <TextBox x:Name="TxtIconSizeIcon" Width="45" Margin="10,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="60" LostFocus="TxtIconSizeIcon_LostFocus" KeyDown="TxtIconSizeIcon_KeyDown"/>
                         </StackPanel>
 
                         <TextBlock Text="窗口大小模式" Foreground="White" Margin="0,15,0,5"/>
@@ -595,114 +586,82 @@
                         </StackPanel>
                         <StackPanel x:Name="PanelCustomSize" Orientation="Horizontal" Margin="0,5" Visibility="Collapsed">
                             <TextBlock Text="W:" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtCustomWidth" Width="60" Margin="5,0,10,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
+                            <TextBox x:Name="TxtCustomWidth" Width="60" Margin="5,0,10,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
                             <TextBlock Text="H:" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtCustomHeight" Width="60" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
+                            <TextBox x:Name="TxtCustomHeight" Width="60" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
                         </StackPanel>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <TextBlock Text="窗口效果" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <RadioButton x:Name="RbTransparencyMode" Content="直接透明" Foreground="White" GroupName="BlurMode" Margin="0,0,15,0" Checked="RbBlurMode_Changed" Tag="0"/>
-                            <RadioButton x:Name="RbBlurMode" Content="Win11 模糊" Foreground="White" GroupName="BlurMode" Checked="RbBlurMode_Changed" Tag="1"/>
-                        </StackPanel>
-                        <TextBlock Text="窗口透明度" Foreground="White" Margin="0,10,0,5"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="OpacitySlider" Width="200" Minimum="0.2" Maximum="1.0" Value="1.0" ValueChanged="OpacitySlider_ValueChanged"/>
-                            <TextBlock x:Name="TxtOpacityValue" Text="100%" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="40"/>
-                        </StackPanel>
-
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
-
-                        <TextBlock Text="窗口边框" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Button Content="亮绿" Tag="#00FF00" Click="BorderColorPreset_Click" Background="#00FF00" Foreground="#111111" BorderThickness="0" Padding="8,4" Margin="0,0,5,0"/>
-                            <Button Content="红" Tag="#FF0000" Click="BorderColorPreset_Click" Background="#FF0000" Foreground="White" BorderThickness="0" Padding="8,4" Margin="0,0,5,0"/>
-                            <Button Content="蓝" Tag="#569CD3" Click="BorderColorPreset_Click" Background="#569CD3" Foreground="White" BorderThickness="0" Padding="8,4" Margin="0,0,5,0"/>
-                            <Button Content="白" Tag="#FFFFFF" Click="BorderColorPreset_Click" Background="#FFFFFF" Foreground="#111111" BorderThickness="0" Padding="8,4" Margin="0,0,5,0"/>
-                            <Button Content="黄" Tag="#FFFF00" Click="BorderColorPreset_Click" Background="#FFFF00" Foreground="#111111" BorderThickness="0" Padding="8,4" Margin="0,0,5,0"/>
-                            <Button Content="橙" Tag="#FF8800" Click="BorderColorPreset_Click" Background="#FF8800" Foreground="White" BorderThickness="0" Padding="8,4"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <TextBlock Text="HEX: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtBorderColor" Width="90" Margin="0,0,10,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtBorderColor_LostFocus"/>
-                            <TextBlock Text="厚度: " Foreground="White" VerticalAlignment="Center"/>
-                            <Slider x:Name="SliderBorderThickness" Width="100" Minimum="0" Maximum="20" Value="0" ValueChanged="SliderBorderThickness_ValueChanged" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtBorderThickness" Text="0" Foreground="White" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="20"/>
-                        </StackPanel>
-
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
-
-                        <TextBlock Text="Folder Aliases (数字按钮 0~9 的别名,鼠标悬停时显示)" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="文件夹别名 (悬停数字按钮时显示)" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <UniformGrid Columns="2" Margin="0,5">
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="0:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias0" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="0"/>
+                                <TextBox x:Name="TxtAlias0" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="0"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="1:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias1" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="1"/>
+                                <TextBox x:Name="TxtAlias1" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="1"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="2:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias2" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="2"/>
+                                <TextBox x:Name="TxtAlias2" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="2"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="3:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias3" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="3"/>
+                                <TextBox x:Name="TxtAlias3" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="3"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="4:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias4" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="4"/>
+                                <TextBox x:Name="TxtAlias4" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="4"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="5:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias5" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="5"/>
+                                <TextBox x:Name="TxtAlias5" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="5"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="6:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias6" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="6"/>
+                                <TextBox x:Name="TxtAlias6" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="6"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="7:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias7" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="7"/>
+                                <TextBox x:Name="TxtAlias7" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="7"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="8:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias8" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="8"/>
+                                <TextBox x:Name="TxtAlias8" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="8"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,3">
                                 <TextBlock Text="9:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias9" Width="160" Margin="5,0,0,0" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="9"/>
+                                <TextBox x:Name="TxtAlias9" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="9"/>
                             </StackPanel>
                         </UniformGrid>
-                        <TextBlock Text="提示: 别名仅保存在配置文件中,不会修改文件夹名。留空则悬停时显示文件夹实际名称。" Foreground="#666666" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="提示: 别名仅保存在配置文件中,不会修改文件夹名。留空则悬停时显示文件夹实际名称。" Foreground="#66FFFFFF" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <TextBlock Text="Help Links" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="帮助链接" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <TextBlock Margin="0,5">
                             <Hyperlink NavigateUri="https://lightspeed.cornradio.org/" RequestNavigate="Hyperlink_RequestNavigate">
-                                <TextBlock Text="https://lightspeed.cornradio.org/" Foreground="#6B9FFF"/>
+                                <TextBlock Text="https://lightspeed.cornradio.org/" Foreground="#CCFFFFFF"/>
                             </Hyperlink>
                         </TextBlock>
 
-                        <Separator Background="#3D3D3D" Margin="0,15"/>
+                        <Separator Background="#33FFFFFF" Margin="0,15"/>
 
-                        <TextBlock Text="关于" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="关于" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
                             <TextBlock Text="当前版本: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtVersion" Text="-" Foreground="#6B9FFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="检查更新" Margin="10,0,0,0" Click="BtnCheckUpdate_Click" Background="#3D3D3D" Foreground="White" BorderThickness="0" Padding="10,5"/>
-                            <TextBlock x:Name="TxtUpdateStatus" Text="" Foreground="#888888" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <TextBlock x:Name="TxtVersion" Text="-" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
+                            <Button Content="检查更新" Margin="10,0,0,0" Click="BtnCheckUpdate_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
+                            <TextBlock x:Name="TxtUpdateStatus" Text="" Foreground="#88FFFFFF" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" x:Name="BottomBarBorder" Background="#252525" Padding="6,2">
+        <Border Grid.Row="2" x:Name="BottomBarBorder" Background="#14FFFFFF" Padding="8,4" Margin="8,4,8,8" CornerRadius="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -711,49 +670,49 @@
                 </Grid.ColumnDefinitions>
                 
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <ToggleButton x:Name="BtnGamepadToggle" Content="🎮" IsChecked="True" Click="BtnGamepadToggle_Click" Height="26" Width="30" Margin="2,0" Background="Transparent" Foreground="#999999" BorderThickness="0" FontSize="14" ToolTip="手柄控制开关">
+                    <ToggleButton x:Name="BtnGamepadToggle" Content="🎮" IsChecked="True" Click="BtnGamepadToggle_Click" Height="26" Width="30" Margin="2,0" Background="Transparent" Foreground="#99FFFFFF" BorderThickness="0" FontSize="14" ToolTip="手柄控制开关">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
-                                <Border x:Name="bg" Background="Transparent" CornerRadius="4">
+                                <Border x:Name="bg" Background="Transparent" CornerRadius="6">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bg" Property="Background" Value="#2A2A2A"/>
+                                        <Setter TargetName="bg" Property="Background" Value="#22FFFFFF"/>
                                         <Setter Property="Foreground" Value="White"/>
                                     </Trigger>
                                     <Trigger Property="IsChecked" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="White"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </ToggleButton.Template>
                     </ToggleButton>
                     <Button Content="📁" Style="{StaticResource SideButtonStyle}" Click="BtnOpenInExplorer_Click" />
-                    <Button Content="⭯" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
+                    <Button Content="↻" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
                     <Button x:Name="BtnQuickStart" Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="启动快速启动（按当前模式）"/>
                 </StackPanel>
                 
                 <TextBlock x:Name="TxtFolderName" Grid.Column="1"
-                           Text="文件夹 0" Foreground="#888888" FontSize="12"
+                           Text="" Foreground="#88FFFFFF" FontSize="12"
                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 
                 <StackPanel Grid.Column="2" Orientation="Horizontal">
                     <ToggleButton x:Name="BtnListView" Content="L" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="True" Click="BtnListView_Click"/>
                     <ToggleButton x:Name="BtnIconView" Content="G" Style="{StaticResource ViewToggleButtonStyle}" IsChecked="False" Click="BtnIconView_Click"/>
-                    <ToggleButton x:Name="BtnSettings" Content="⋮" Click="BtnSettings_Click" Height="26" Width="30" Margin="2,0" Background="Transparent" Foreground="#999999" BorderThickness="0" FontSize="16">
+                    <ToggleButton x:Name="BtnSettings" Content="⋮" Click="BtnSettings_Click" Height="26" Width="30" Margin="2,0" Background="Transparent" Foreground="#99FFFFFF" BorderThickness="0" FontSize="16">
                         <ToggleButton.Template>
                             <ControlTemplate TargetType="ToggleButton">
-                                <Border x:Name="border" Background="Transparent" CornerRadius="4">
+                                <Border x:Name="border" Background="Transparent" CornerRadius="6">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#2A2A2A"/>
+                                        <Setter TargetName="border" Property="Background" Value="#22FFFFFF"/>
                                         <Setter Property="Foreground" Value="White"/>
                                     </Trigger>
                                     <Trigger Property="IsChecked" Value="True">
-                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                                        <Setter Property="Foreground" Value="White"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -763,7 +722,6 @@
             </Grid>
         </Border>
 
-        <!-- 顶部居中弹出:显示当前 hover 的数字按钮对应的别名 -->
         <Popup x:Name="AliasPopup"
                Placement="Top"
                PlacementTarget="{Binding ElementName=TitleBarGrid}"
@@ -771,32 +729,31 @@
                VerticalOffset="-8"
                AllowsTransparency="True"
                IsOpen="False">
-            <Border Background="#2D2D2D"
-                    BorderBrush="{DynamicResource AccentBrush}"
+            <Border Background="#CC1A1A1A"
+                    BorderBrush="#66FFFFFF"
                     BorderThickness="1"
-                    CornerRadius="6"
+                    CornerRadius="10"
                     Padding="12,6"
                     MaxWidth="400">
                 <TextBlock x:Name="TxtAliasOverlay"
                            Text=""
                            Foreground="White"
                            FontSize="13"
-                           FontWeight="Bold"
+                           FontWeight="SemiBold"
                            TextWrapping="Wrap"/>
             </Border>
         </Popup>
 
-        <!-- Toast 通知:浮在底部栏之上, 不拦截鼠标事件 -->
         <Grid Grid.Row="0" Grid.RowSpan="3"
               HorizontalAlignment="Center"
               VerticalAlignment="Bottom"
               Margin="0,0,0,70"
               IsHitTestVisible="False">
             <Border x:Name="ToastBar"
-                    Background="#E62D2D2D"
-                    BorderBrush="{DynamicResource AccentBrush}"
+                    Background="#CC1A1A1A"
+                    BorderBrush="#66FFFFFF"
                     BorderThickness="1"
-                    CornerRadius="6"
+                    CornerRadius="10"
                     Padding="24,10"
                     Visibility="Collapsed"
                     Opacity="0">
@@ -807,5 +764,6 @@
             </Border>
         </Grid>
     </Grid>
+    </Border>
     </Border>
 </Window>

@@ -36,13 +36,6 @@ namespace Lightspeed_wpf
         public int CustomWindowHeight { get; set; } = 600;
         // 触控模式: 顶部/底部栏整体放大 2 倍
         public bool TouchMode { get; set; } = false;
-        // 窗口透明度 (0.2~1.0)
-        public double WindowOpacity { get; set; } = 1.0;
-        // 0=直接透明, 1=Win11 模糊
-        public int BlurMode { get; set; } = 0;
-        // 窗口边框颜色与厚度 (厚度 0=无边框)
-        public string WindowBorderColor { get; set; } = "#00FF00";
-        public int WindowBorderThickness { get; set; } = 0;
         // 手柄组合键 (XInput button bitmask), 0=禁用
         public int GamepadHotkeyButtons { get; set; } = 0;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名
