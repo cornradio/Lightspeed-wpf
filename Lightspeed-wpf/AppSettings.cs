@@ -36,6 +36,10 @@ namespace Lightspeed_wpf
         public int CustomWindowHeight { get; set; } = 600;
         // 触控模式: 顶部/底部栏整体放大 2 倍
         public bool TouchMode { get; set; } = false;
+        /// <summary>
+        /// Toast/HUD 位置: 0正上 1左上 2右上 3正下 4左下 5右下
+        /// </summary>
+        public int ToastPosition { get; set; } = 0;
         // 手柄组合键 (XInput button bitmask), 0=禁用
         public int GamepadHotkeyButtons { get; set; } = 0;
         // Key 是文件夹编号 (0~9) 的字符串形式,Value 是用户自定义的别名

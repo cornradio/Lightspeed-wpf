@@ -21,18 +21,14 @@ namespace Lightspeed_wpf
             void Show()
             {
                 if (_instance == null)
-                {
                     _instance = new LaunchHudWindow();
-                }
 
                 var hud = _instance;
                 hud.HudTitle.Text = title;
                 hud.HudIcon.Source = icon;
                 hud.HudIcon.Visibility = icon != null ? Visibility.Visible : Visibility.Collapsed;
 
-                double screenW = SystemParameters.PrimaryScreenWidth;
-                hud.Left = (screenW - hud.Width) / 2;
-                hud.Top = SystemParameters.WorkArea.Top + 36;
+                hud.ApplyPosition(AppSettings.Instance.ToastPosition);
 
                 if (!hud.IsVisible)
                     hud.Show();
@@ -44,6 +40,48 @@ namespace Lightspeed_wpf
                 Show();
             else
                 app.Dispatcher.BeginInvoke(Show);
+        }
+
+        private void ApplyPosition(int position)
+        {
+            var work = SystemParameters.WorkArea;
+            const double margin = 36;
+            double w = Width > 0 ? Width : 360;
+            double h = Height > 0 ? Height : 88;
+
+            double left;
+            double top;
+
+            switch (position)
+            {
+                case 1: // 左上
+                    left = work.Left + margin;
+                    top = work.Top + margin;
+                    break;
+                case 2: // 右上
+                    left = work.Right - w - margin;
+                    top = work.Top + margin;
+                    break;
+                case 3: // 正下
+                    left = work.Left + (work.Width - w) / 2;
+                    top = work.Bottom - h - margin;
+                    break;
+                case 4: // 左下
+                    left = work.Left + margin;
+                    top = work.Bottom - h - margin;
+                    break;
+                case 5: // 右下
+                    left = work.Right - w - margin;
+                    top = work.Bottom - h - margin;
+                    break;
+                default: // 0 正上
+                    left = work.Left + (work.Width - w) / 2;
+                    top = work.Top + margin;
+                    break;
+            }
+
+            Left = left;
+            Top = top;
         }
 
         private async void PlayAsync(int durationMs)

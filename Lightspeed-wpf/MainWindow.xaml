@@ -565,6 +565,17 @@
                         <CheckBox x:Name="ChkHideDesktopIni" Content="隐藏 desktop.ini 文件" Foreground="White" Margin="0,5" Checked="ChkHideDesktopIni_Changed" Unchecked="ChkHideDesktopIni_Changed"/>
                         <CheckBox x:Name="ChkHideExtensions" Content="隐藏文件扩展名" Foreground="White" Margin="0,5" Checked="ChkHideExtensions_Changed" Unchecked="ChkHideExtensions_Changed"/>
                         <CheckBox x:Name="ChkSingleClickOpen" Content="单击打开文件/文件夹" Foreground="White" Margin="0,5" Checked="ChkSingleClickOpen_Changed" Unchecked="ChkSingleClickOpen_Changed"/>
+
+                        <TextBlock Text="弹窗提示位置" Foreground="White" Margin="0,15,0,8"/>
+                        <UniformGrid Columns="3" Rows="2" Width="280" HorizontalAlignment="Left">
+                            <RadioButton x:Name="RbToastPos1" Content="左上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="1"/>
+                            <RadioButton x:Name="RbToastPos0" Content="正上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="0"/>
+                            <RadioButton x:Name="RbToastPos2" Content="右上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="2"/>
+                            <RadioButton x:Name="RbToastPos4" Content="左下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="4"/>
+                            <RadioButton x:Name="RbToastPos3" Content="正下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="3"/>
+                            <RadioButton x:Name="RbToastPos5" Content="右下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="5"/>
+                        </UniformGrid>
+                        <TextBlock Text="同时作用于主窗口 Toast 与快速启动 HUD" Foreground="#66FFFFFF" FontSize="10" Margin="0,4,0,0"/>
                         
                         <TextBlock Text="图标大小 (列表)" Foreground="White" Margin="0,15,0,5"/>
                         <StackPanel Orientation="Horizontal" Margin="0,5">
@@ -744,10 +755,11 @@
             </Border>
         </Popup>
 
-        <Grid Grid.Row="0" Grid.RowSpan="3"
+        <Grid x:Name="ToastHost"
+              Grid.Row="0" Grid.RowSpan="3"
               HorizontalAlignment="Center"
-              VerticalAlignment="Bottom"
-              Margin="0,0,0,70"
+              VerticalAlignment="Top"
+              Margin="16"
               IsHitTestVisible="False">
             <Border x:Name="ToastBar"
                     Background="#CC1A1A1A"

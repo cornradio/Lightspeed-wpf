@@ -791,6 +791,8 @@ namespace Lightspeed_wpf
             ChkHideExtensions.IsChecked = AppSettings.Instance.HideExtensions;
             ChkSingleClickOpen.IsChecked = AppSettings.Instance.SingleClickOpen;
             ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
+            ApplyToastPositionRadio(AppSettings.Instance.ToastPosition);
+            ApplyToastHostPosition();
             
             listIconSize = AppSettings.Instance.ListIconSize;
             iconIconSize = AppSettings.Instance.IconIconSize;
@@ -1951,6 +1953,72 @@ namespace Lightspeed_wpf
         {
             AppSettings.Instance.SingleClickOpen = ChkSingleClickOpen.IsChecked ?? false;
             AppSettings.Instance.Save();
+        }
+
+        private void RbToastPosition_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_loadingSettings) return;
+            if (sender is not System.Windows.Controls.RadioButton rb || rb.IsChecked != true) return;
+            if (!int.TryParse(rb.Tag?.ToString(), out int pos)) return;
+
+            AppSettings.Instance.ToastPosition = pos;
+            AppSettings.Instance.Save();
+            ApplyToastHostPosition();
+            ShowToast("提示位置已更新");
+        }
+
+        private void ApplyToastPositionRadio(int position)
+        {
+            switch (position)
+            {
+                case 1: RbToastPos1.IsChecked = true; break;
+                case 2: RbToastPos2.IsChecked = true; break;
+                case 3: RbToastPos3.IsChecked = true; break;
+                case 4: RbToastPos4.IsChecked = true; break;
+                case 5: RbToastPos5.IsChecked = true; break;
+                default: RbToastPos0.IsChecked = true; break;
+            }
+        }
+
+        private void ApplyToastHostPosition()
+        {
+            if (ToastHost == null) return;
+            int pos = AppSettings.Instance.ToastPosition;
+            const double margin = 16;
+
+            switch (pos)
+            {
+                case 1: // 左上
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Top;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+                case 2: // 右上
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Top;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+                case 3: // 正下
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Bottom;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+                case 4: // 左下
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Left;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Bottom;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+                case 5: // 右下
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Right;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Bottom;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+                default: // 0 正上
+                    ToastHost.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
+                    ToastHost.VerticalAlignment = VerticalAlignment.Top;
+                    ToastHost.Margin = new Thickness(margin);
+                    break;
+            }
         }
 
         private void ChkDisableInFullscreen_Changed(object sender, RoutedEventArgs e)
