@@ -13,17 +13,14 @@ namespace Lightspeed_wpf
             Title = title;
             HotkeyStr = hotkeystr;
             Path = path;
-            if (Path.Contains(","))
-            {
-                Path = Path.Replace(",", "`,");
-            }
         }
 
         public string getAhkString()
         {
+            string ahkPath = Path.Contains(",") ? Path.Replace(",", "`,") : Path;
             string content = $@"
 {HotkeyStr}::
-open_or_activate(""{Title}"",""{Path}"")
+open_or_activate(""{Title}"",""{ahkPath}"")
 return
 ";
             return content;

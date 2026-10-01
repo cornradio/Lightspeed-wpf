@@ -71,6 +71,9 @@ namespace Lightspeed_wpf
         private bool isCapturingSearchKey = false;
         private bool _loadingSettings = false;
         private SearchWindow? _searchWindow;
+        private NativeQuickLaunchService? _nativeQuickLaunch;
+        private int _quickLaunchMode = 0; // 0=Off, 1=AHK, 2=Native
+
 
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern int SHOpenFolderAndSelectItems(IntPtr pidlFolder, uint cidl, IntPtr[] apidl, uint dwFlags);
@@ -769,7 +772,21 @@ namespace Lightspeed_wpf
 
         private void LoadSettings()
         {
-            ChkAutoStartAHK.IsChecked = AppSettings.Instance.AutoStartAHK;
+            _loadingSettings = true;
+
+            int mode = ResolveQuickLaunchMode();
+            _quickLaunchMode = mode;
+            if (AppSettings.Instance.QuickLaunchMode == null)
+            {
+                AppSettings.Instance.QuickLaunchMode = mode;
+                AppSettings.Instance.AutoStartAHK = mode == 1;
+                AppSettings.Instance.Save();
+            }
+            RbQuickLaunchOff.IsChecked = mode == 0;
+            RbQuickLaunchAHK.IsChecked = mode == 1;
+            RbQuickLaunchNative.IsChecked = mode == 2;
+            UpdateQuickLaunchPanels();
+
             ChkAutoStartWithWindows.IsChecked = AppSettings.Instance.AutoStartWithWindows;
 
             var ver = Assembly.GetExecutingAssembly().GetName().Version;
@@ -816,19 +833,7 @@ namespace Lightspeed_wpf
             _gamepadHotkeyButtons = (ushort)AppSettings.Instance.GamepadHotkeyButtons;
             UpdateGamepadHotkeyDisplay();
 
-            if (AppSettings.Instance.AutoStartAHK)
-            {
-                CreateAHK(basePath);
-                string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
-                if (File.Exists(ahkPath))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = ahkPath,
-                        UseShellExecute = true
-                    });
-                }
-            }
+            ApplyQuickLaunchMode(mode, startBackend: true);
 
             // 加载 0~9 文件夹别名到设置面板的 TextBox
             LoadFolderAliasesToUI();
@@ -1616,6 +1621,8 @@ namespace Lightspeed_wpf
             ShowToast("已刷新");
             ClearFolderCache(currentFolder);
             NavigateToFolder(currentFolder);
+            if (_quickLaunchMode == 2)
+                _nativeQuickLaunch?.RebuildBindings();
         }
 
         private System.Threading.CancellationTokenSource? _toastCts;
@@ -1766,24 +1773,183 @@ namespace Lightspeed_wpf
 
         private void BtnQuickStartAHK_Click(object sender, RoutedEventArgs e)
         {
-            ShowToast("AHK 已启动");
-            CreateAHK(basePath);
-            string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
-            if (File.Exists(ahkPath))
+            if (_quickLaunchMode == 1)
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = ahkPath,
-                    UseShellExecute = true
-                });
+                ShowToast("AHK 已启动");
+                CreateAHK(basePath);
+                StartAhkProcess();
+            }
+            else if (_quickLaunchMode == 2)
+            {
+                ApplyQuickLaunchMode(2, startBackend: true);
+                ShowToast("程序本体快捷键已启用");
+            }
+            else
+            {
+                ShowToast("请先在设置中选择快速启动方式");
             }
         }
 
-        private void ChkAutoStartAHK_Changed(object sender, RoutedEventArgs e)
+        private void RbQuickLaunchMode_Changed(object sender, RoutedEventArgs e)
         {
-            AppSettings.Instance.AutoStartAHK = ChkAutoStartAHK.IsChecked ?? false;
+            if (_loadingSettings) return;
+            if (sender is not System.Windows.Controls.RadioButton rb || rb.IsChecked != true) return;
+            if (!int.TryParse(rb.Tag?.ToString(), out int mode)) return;
+
+            _quickLaunchMode = mode;
+            AppSettings.Instance.QuickLaunchMode = mode;
+            AppSettings.Instance.AutoStartAHK = mode == 1;
             AppSettings.Instance.Save();
+
+            UpdateQuickLaunchPanels();
+            ApplyQuickLaunchMode(mode, startBackend: true);
+
+            ShowToast(mode switch
+            {
+                1 => "已切换到 AutoHotkey",
+                2 => "已切换到程序本体快捷键（若 AHK 仍在运行请手动退出）",
+                _ => "已关闭快速启动"
+            });
         }
+
+        private void BtnReloadNativeBindings_Click(object sender, RoutedEventArgs e)
+        {
+            _nativeQuickLaunch?.RebuildBindings();
+            ShowToast("快捷键绑定已重新加载");
+        }
+
+        private static int ResolveQuickLaunchMode()
+        {
+            if (AppSettings.Instance.QuickLaunchMode is int mode && mode is >= 0 and <= 2)
+                return mode;
+            return AppSettings.Instance.AutoStartAHK ? 1 : 0;
+        }
+
+        private void UpdateQuickLaunchPanels()
+        {
+            if (PanelAhkControls != null)
+                PanelAhkControls.Visibility = _quickLaunchMode == 1 ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelNativeControls != null)
+                PanelNativeControls.Visibility = _quickLaunchMode == 2 ? Visibility.Visible : Visibility.Collapsed;
+
+            if (BtnQuickStart != null)
+            {
+                BtnQuickStart.ToolTip = _quickLaunchMode switch
+                {
+                    1 => "生成并启动 AHK",
+                    2 => "启用程序本体快捷键",
+                    _ => "请先在设置中选择快速启动方式"
+                };
+            }
+        }
+
+        private void ApplyQuickLaunchMode(int mode, bool startBackend)
+        {
+            // Stop native first when leaving native mode
+            if (mode != 2)
+            {
+                _nativeQuickLaunch?.Stop();
+            }
+
+            if (!startBackend) return;
+
+            if (mode == 1)
+            {
+                CreateAHK(basePath);
+                StartAhkProcess();
+            }
+            else if (mode == 2)
+            {
+                EnsureNativeQuickLaunch();
+                _nativeQuickLaunch!.RebuildBindings();
+                if (!_nativeQuickLaunch.IsRunning)
+                    _nativeQuickLaunch.Start();
+            }
+        }
+
+        private void EnsureNativeQuickLaunch()
+        {
+            if (_nativeQuickLaunch != null) return;
+            _nativeQuickLaunch = new NativeQuickLaunchService(basePath, Dispatcher);
+            _nativeQuickLaunch.LaunchRequested += OnNativeQuickLaunchRequested;
+        }
+
+        private void OnNativeQuickLaunchRequested(string title, string path)
+        {
+            try
+            {
+                bool isDir = Directory.Exists(path);
+                var icon = IconHelper.GetIcon(path, isDir, 48);
+                LaunchHudWindow.ShowLaunch(title, icon);
+                OpenOrActivate(title, path);
+                AddToRecentFiles(path);
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"启动失败: {ex.Message}");
+            }
+        }
+
+        private void StartAhkProcess()
+        {
+            string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
+            if (!File.Exists(ahkPath)) return;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = ahkPath,
+                UseShellExecute = true
+            });
+        }
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        private void OpenOrActivate(string title, string path)
+        {
+            IntPtr found = IntPtr.Zero;
+            EnumWindows((hWnd, _) =>
+            {
+                if (!IsWindowVisible(hWnd)) return true;
+                var sb = new StringBuilder(512);
+                GetWindowText(hWnd, sb, sb.Capacity);
+                string windowTitle = sb.ToString();
+                if (!string.IsNullOrEmpty(windowTitle) &&
+                    windowTitle.Contains(title, StringComparison.OrdinalIgnoreCase))
+                {
+                    found = hWnd;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            if (found != IntPtr.Zero)
+            {
+                ShowWindow(found, 9); // SW_RESTORE
+                SetForegroundWindow(found);
+                return;
+            }
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+        }
+
 
         private const string ReleasesPageUrl = "https://github.com/cornradio/Lightspeed-wpf/releases";
         private const string ReleasesApiUrl = "https://api.github.com/repos/cornradio/Lightspeed-wpf/releases/latest";
@@ -3123,6 +3289,8 @@ return
         public void ForceClose()
         {
             _gamepadTimer?.Stop();
+            _nativeQuickLaunch?.Dispose();
+            _nativeQuickLaunch = null;
             System.Environment.Exit(0);
         }
 

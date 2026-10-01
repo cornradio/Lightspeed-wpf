@@ -10,6 +10,11 @@ namespace Lightspeed_wpf
         private static readonly string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
         public bool AutoStartAHK { get; set; } = false;
+        /// <summary>
+        /// Quick launch backend: 0=Off, 1=AutoHotkey, 2=Native (app).
+        /// Null means migrate from AutoStartAHK on first load after upgrade.
+        /// </summary>
+        public int? QuickLaunchMode { get; set; } = null;
         public bool AutoStartWithWindows { get; set; } = false;
         // 托盘图标单击行为: 0=打开主界面, 1=打开搜索页面
         public int TrayClickAction { get; set; } = 0;

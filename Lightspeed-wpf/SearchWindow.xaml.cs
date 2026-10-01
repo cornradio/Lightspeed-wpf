@@ -29,6 +29,7 @@ namespace Lightspeed_wpf
         public void ShowSearch()
         {
             SearchTextBox.Text = "";
+            SearchPlaceholder.Visibility = Visibility.Visible;
             SearchResultsList.Items.Clear();
             ShowRecentFiles();
             Show();
@@ -79,7 +80,7 @@ namespace Lightspeed_wpf
 
                 SearchResultsList.Items.Add(new SearchResultItem
                 {
-                    Icon = IconHelper.GetIcon(path, isDir, 24),
+                    Icon = IconHelper.GetIcon(path, isDir, 28),
                     Name = displayName,
                     FullPath = path,
                     FolderTag = tag,
@@ -95,6 +96,10 @@ namespace Lightspeed_wpf
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             string query = SearchTextBox.Text.Trim();
+            SearchPlaceholder.Visibility = string.IsNullOrEmpty(SearchTextBox.Text)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
             SearchResultsList.Items.Clear();
 
             if (string.IsNullOrEmpty(query))
@@ -103,7 +108,6 @@ namespace Lightspeed_wpf
                 return;
             }
 
-            string queryLower = query.ToLowerInvariant();
             var recentSet = new HashSet<string>(AppSettings.Instance.RecentFiles, StringComparer.OrdinalIgnoreCase);
             var recentResults = new List<SearchResultItem>();
             var otherResults = new List<SearchResultItem>();
@@ -121,21 +125,21 @@ namespace Lightspeed_wpf
                     foreach (string dir in Directory.GetDirectories(folderPath))
                     {
                         string name = Path.GetFileName(dir);
-                        if (name.ToLowerInvariant().Contains(queryLower))
+                        if (!PinyinHelper.Matches(name, query))
+                            continue;
+
+                        var item = new SearchResultItem
                         {
-                            var item = new SearchResultItem
-                            {
-                                Icon = IconHelper.GetIcon(dir, true, 24),
-                                Name = name,
-                                FullPath = dir,
-                                FolderTag = tag,
-                                IsDirectory = true
-                            };
-                            if (recentSet.Contains(dir))
-                                recentResults.Add(item);
-                            else
-                                otherResults.Add(item);
-                        }
+                            Icon = IconHelper.GetIcon(dir, true, 28),
+                            Name = name,
+                            FullPath = dir,
+                            FolderTag = tag,
+                            IsDirectory = true
+                        };
+                        if (recentSet.Contains(dir))
+                            recentResults.Add(item);
+                        else
+                            otherResults.Add(item);
                     }
 
                     foreach (string file in Directory.GetFiles(folderPath))
@@ -147,24 +151,25 @@ namespace Lightspeed_wpf
                             int dotIndex = name.LastIndexOf('.');
                             displayName = name.Substring(0, dotIndex);
                         }
-                        if (displayName.ToLowerInvariant().Contains(queryLower) || name.ToLowerInvariant().Contains(queryLower))
-                        {
-                            if (AppSettings.Instance.HideDesktopIni && name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
-                                continue;
 
-                            var item = new SearchResultItem
-                            {
-                                Icon = IconHelper.GetIcon(file, false, 24),
-                                Name = displayName,
-                                FullPath = file,
-                                FolderTag = tag,
-                                IsDirectory = false
-                            };
-                            if (recentSet.Contains(file))
-                                recentResults.Add(item);
-                            else
-                                otherResults.Add(item);
-                        }
+                        if (!PinyinHelper.Matches(displayName, query) && !PinyinHelper.Matches(name, query))
+                            continue;
+
+                        if (AppSettings.Instance.HideDesktopIni && name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        var item = new SearchResultItem
+                        {
+                            Icon = IconHelper.GetIcon(file, false, 28),
+                            Name = displayName,
+                            FullPath = file,
+                            FolderTag = tag,
+                            IsDirectory = false
+                        };
+                        if (recentSet.Contains(file))
+                            recentResults.Add(item);
+                        else
+                            otherResults.Add(item);
                     }
                 }
                 catch { }

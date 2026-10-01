@@ -535,20 +535,33 @@
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
-                        <TextBlock Text="AHK 功能" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
-                        <UniformGrid Rows="1" Margin="0,0,0,5">
-                            <Button Content="Create Folders" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click"/>
-                            <Button Content="Generate AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
-                            <Button Content="Start AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
-                            <Button Content="Generate+Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
-                        </UniformGrid>
-                        
-                        <CheckBox x:Name="ChkAutoStartAHK" Content="AHK Auto Start" Foreground="White" Margin="0,10,0,5" Checked="ChkAutoStartAHK_Changed" Unchecked="ChkAutoStartAHK_Changed"/>
-                        <TextBlock Margin="0,5">
-                            <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate">
-                                <TextBlock Text="下载 AHK (懒人包)" Foreground="#6B9FFF"/>
-                            </Hyperlink>
-                        </TextBlock>
+                        <TextBlock Text="快速启动" Foreground="#888888" FontSize="12" Margin="0,0,0,10"/>
+                        <TextBlock Text="快捷键仅在桌面或任务栏获得焦点时生效，避免在其他应用中误触。" Foreground="#666666" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <RadioButton x:Name="RbQuickLaunchOff" Content="关闭" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="0"/>
+                            <RadioButton x:Name="RbQuickLaunchAHK" Content="AutoHotkey" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="1"/>
+                            <RadioButton x:Name="RbQuickLaunchNative" Content="程序本体" Foreground="White" GroupName="QuickLaunch" Checked="RbQuickLaunchMode_Changed" Tag="2"/>
+                        </StackPanel>
+
+                        <Button Content="Create Folders" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click" HorizontalAlignment="Left" Margin="0,0,0,8" Padding="12,6"/>
+
+                        <StackPanel x:Name="PanelAhkControls">
+                            <UniformGrid Rows="1" Margin="0,0,0,5">
+                                <Button Content="Generate AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
+                                <Button Content="Start AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
+                                <Button Content="Generate+Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
+                            </UniformGrid>
+                            <TextBlock Margin="0,5">
+                                <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate">
+                                    <TextBlock Text="下载 AHK (懒人包)" Foreground="#6B9FFF"/>
+                                </Hyperlink>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <StackPanel x:Name="PanelNativeControls" Visibility="Collapsed">
+                            <TextBlock Text="Alt+0~9 打开文件夹；按住数字再按文件名首字母启动。启动时显示图标 HUD。" Foreground="#888888" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <Button Content="重新加载快捷键绑定" Style="{StaticResource SettingsButtonStyle}" Click="BtnReloadNativeBindings_Click" HorizontalAlignment="Left" Padding="12,6"/>
+                        </StackPanel>
 
                         <Separator Background="#3D3D3D" Margin="0,15"/>
 
@@ -718,7 +731,7 @@
                     </ToggleButton>
                     <Button Content="📁" Style="{StaticResource SideButtonStyle}" Click="BtnOpenInExplorer_Click" />
                     <Button Content="⭯" Style="{StaticResource SideButtonStyle}" Click="BtnRefresh_Click"/>
-                    <Button Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="Generate and Start AHK (No Dialog)"/>
+                    <Button x:Name="BtnQuickStart" Content="⚡" Style="{StaticResource SideButtonStyle}" Click="BtnQuickStartAHK_Click" ToolTip="启动快速启动（按当前模式）"/>
                 </StackPanel>
                 
                 <TextBlock x:Name="TxtFolderName" Grid.Column="1"
