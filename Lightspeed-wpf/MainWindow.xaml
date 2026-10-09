@@ -434,9 +434,9 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Image Grid.Column="0" Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White" Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-                            <TextBox x:Name="EditTextBox" Grid.Column="1" VerticalAlignment="Center" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="4,2" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}" LostFocus="EditTextBox_LostFocus" PreviewKeyDown="EditTextBox_PreviewKeyDown"/>
+                            <Image Grid.Column="0" Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="{Binding IconMargin}" RenderOptions.BitmapScalingMode="Fant"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" Foreground="White" FontSize="{Binding LabelFontSize}" Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
+                            <TextBox x:Name="EditTextBox" Grid.Column="1" VerticalAlignment="Center" Background="#33FFFFFF" Foreground="White" FontSize="{Binding LabelFontSize}" BorderThickness="0" Padding="4,2" Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}" LostFocus="EditTextBox_LostFocus" PreviewKeyDown="EditTextBox_PreviewKeyDown"/>
                         </Grid>
                     </DataTemplate>
                 </ListView.ItemTemplate>
@@ -457,27 +457,33 @@
                 </ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem" BasedOn="{StaticResource IconListBoxItem}">
-                        <Setter Property="MinWidth" Value="90"/>
-                        <Setter Property="Margin" Value="3"/>
+                        <Setter Property="Width" Value="100"/>
+                        <Setter Property="MinHeight" Value="100"/>
+                        <Setter Property="Margin" Value="4"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="VerticalContentAlignment" Value="Top"/>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel HorizontalAlignment="Center">
-                            <Image Source="{Binding Icon}" Width="{Binding IconSize}" Height="{Binding IconSize}" Margin="0,0,0,5" RenderOptions.BitmapScalingMode="HighQuality"/>
-                            <TextBlock Text="{Binding Name}" 
-                                       TextWrapping="Wrap" 
-                                       TextAlignment="Center" 
+                        <StackPanel>
+                            <Image Source="{Binding Icon}"
+                                   Width="{Binding IconSize}"
+                                   Height="{Binding IconSize}"
+                                   Margin="{Binding IconMargin}"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="Fant"/>
+                            <TextBlock Text="{Binding Name}"
+                                       TextAlignment="Center"
+                                       TextWrapping="Wrap"
                                        Foreground="White"
-                                       MaxWidth="80"
-                                       FontSize="11"
+                                       FontSize="{Binding LabelFontSize}"
                                        Visibility="{Binding IsEditing, Converter={StaticResource InverseBoolToVisibilityConverter}}"/>
-                            <TextBox TextWrapping="Wrap" 
-                                     TextAlignment="Center" 
-                                     Background="#33FFFFFF" 
+                            <TextBox TextAlignment="Center"
+                                     TextWrapping="Wrap"
+                                     Background="#33FFFFFF"
                                      Foreground="White"
-                                     MaxWidth="80"
-                                     FontSize="11"
+                                     FontSize="{Binding LabelFontSize}"
                                      BorderThickness="0"
                                      Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibilityConverter}}"
                                      LostFocus="EditTextBox_LostFocus"

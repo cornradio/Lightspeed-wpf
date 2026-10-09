@@ -1,0 +1,121 @@
+name: Release on Version Bump
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "Lightspeed-wpf/Lightspeed-wpf.csproj"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Read version from csproj
+        id: ver
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content "Lightspeed-wpf/Lightspeed-wpf.csproj"
+          $version = @($csproj.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
+          if (-not $version) { throw "Version not found in csproj" }
+
+          $prevVersion = ""
+          try {
+            $prevXml = git show HEAD~1:Lightspeed-wpf/Lightspeed-wpf.csproj 2>$null
+            if ($prevXml) {
+              [xml]$prev = $prevXml
+              $prevVersion = @($prev.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
+            }
+          } catch { }
+
+          Write-Host "Current version: $version"
+          Write-Host "Previous version: $prevVersion"
+
+          $changed = ($version -ne $prevVersion)
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $changed = $true
+            Write-Host "Manual dispatch — force release"
+          }
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "changed=$changed" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Skip if version unchanged
+        if: steps.ver.outputs.changed != 'True' && steps.ver.outputs.changed != 'true'
+        run: echo "Version did not change — skipping release."
+
+      - name: Check tag does not already exist
+        id: tagcheck
+        if: steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true'
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.ver.outputs.tag }}"
+          git fetch --tags --force
+          $exists = git rev-parse -q --verify "refs/tags/$tag" 2>$null
+          if ($exists) {
+            Write-Host "Tag $tag already exists — skipping release."
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+      - name: Pack (framework-dependent + self-contained)
+        if: (steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true') && steps.tagcheck.outputs.exists == 'false'
+        shell: pwsh
+        run: .\pack.ps1
+
+      - name: Prepare release notes
+        id: notes
+        if: (steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true') && steps.tagcheck.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $notesPath = "Releasenotes/RELEASE_v$version.md"
+          $out = "release_notes.md"
+
+          if (Test-Path $notesPath) {
+            Copy-Item $notesPath $out
+            Write-Host "Using $notesPath"
+          } else {
+            @"
+          ## Lightspeed v$version
+
+          Automatic release built from commit ${{ github.sha }}.
+
+          ### Downloads
+          - **framework-dependent**: small, requires [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0)
+          - **self-contained**: larger, includes .NET runtime
+          "@ | Set-Content $out -Encoding utf8
+            Write-Host "No release notes file; using default body"
+          }
+
+          "path=$out" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Create GitHub Release
+        if: (steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true') && steps.tagcheck.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Lightspeed ${{ steps.ver.outputs.tag }}
+          body_path: ${{ steps.notes.outputs.path }}
+          draft: false
+          prerelease: false
+          files: |
+            publish/Lightspeed-wpf-v${{ steps.ver.outputs.version }}-win-x64-framework-dependent.zip
+            publish/Lightspeed-wpf-v${{ steps.ver.outputs.version }}-win-x64-self-contained.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

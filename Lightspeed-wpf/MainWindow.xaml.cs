@@ -166,6 +166,7 @@ namespace Lightspeed_wpf
         private bool _gamepadHotkeyTriggered;
         private bool _capturingGamepadHotkey;
         private bool _iconSizeDirty;
+        private DispatcherTimer? _iconSizeWheelTimer;
         private bool _gamepadEnabled = true;
         private const int initialRepeatDelayMs = 200;
         private const int repeatIntervalMs = 50;
@@ -206,6 +207,8 @@ namespace Lightspeed_wpf
             IconListView.PreviewMouseMove += ListView_PreviewMouseMove;
             FileListView.PreviewMouseLeftButtonUp += ListView_PreviewMouseLeftButtonUp;
             IconListView.PreviewMouseLeftButtonUp += ListView_PreviewMouseLeftButtonUp;
+            FileListView.PreviewMouseWheel += FileView_PreviewMouseWheel;
+            IconListView.PreviewMouseWheel += FileView_PreviewMouseWheel;
         }
 
         private void FolderButton_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
@@ -673,11 +676,89 @@ namespace Lightspeed_wpf
                 if (scrollViewer != null)
                     panelWidth = scrollViewer.ViewportWidth > 0 ? scrollViewer.ViewportWidth : panelWidth;
 
-                double itemWidth = 96; // MinWidth(90) + Margin(3*2)
+                double itemWidth = GetIconGridCellWidth() + GetGridCellMargin() * 2;
                 int cols = Math.Max(1, (int)(panelWidth / itemWidth));
                 return cols;
             }
             catch { return 1; }
+        }
+
+        private const double GridRefIconSize = 60.0;
+
+        /// <summary>Font grows/shrinks with icon size (no tight ceiling that keeps large icons with tiny text).</summary>
+        private double GetLabelFontSize(bool isIconMode)
+        {
+            if (isIconMode)
+            {
+                // 16→8, 60→13, 96→18, 128→22
+                return Math.Clamp(iconIconSize * 0.22, 8.0, 22.0);
+            }
+            // 16→10, 30→13, 48→18, 64→22
+            return Math.Clamp(listIconSize * 0.42, 10.0, 22.0);
+        }
+
+        private double GetGridScale() =>
+            Math.Clamp(iconIconSize / GridRefIconSize, 0.3, 2.2);
+
+        private double GetGridLabelFontSize() => GetLabelFontSize(true);
+
+        private double GetGridLabelGap() =>
+            Math.Max(2.0, iconIconSize * 0.1);
+
+        private double GetGridCellMargin() =>
+            Math.Max(1.0, iconIconSize * 0.06);
+
+        private double GetGridItemPadding() =>
+            Math.Max(2.0, iconIconSize * 0.12);
+
+        private Thickness GetListIconMargin() =>
+            new Thickness(0, 0, Math.Max(6.0, listIconSize * 0.35), 0);
+
+        private double GetIconGridCellWidth()
+        {
+            double iconPx = iconIconSize * GetDpiScaleFactor();
+            // No hard floor — shrink with icon so the grid gets more compact
+            return iconPx + Math.Max(6.0, 24.0 * GetGridScale());
+        }
+
+        private double GetIconGridCellHeight()
+        {
+            double iconPx = iconIconSize * GetDpiScaleFactor();
+            return iconPx + Math.Max(14.0, 26.0 * GetGridScale());
+        }
+
+        private void UpdateIconGridLayout()
+        {
+            if (IconListView == null) return;
+
+            double cellW = GetIconGridCellWidth();
+            double minH = GetIconGridCellHeight();
+            double margin = GetGridCellMargin();
+            double padding = GetGridItemPadding();
+            double fontSize = GetGridLabelFontSize();
+            double labelGap = GetGridLabelGap();
+
+            var style = new Style(typeof(ListBoxItem));
+            if (TryFindResource("IconListBoxItem") is Style baseStyle)
+                style.BasedOn = baseStyle;
+
+            style.Setters.Add(new Setter(WidthProperty, cellW));
+            style.Setters.Add(new Setter(MinHeightProperty, minH));
+            style.Setters.Add(new Setter(MarginProperty, new Thickness(margin)));
+            style.Setters.Add(new Setter(PaddingProperty, new Thickness(padding)));
+            style.Setters.Add(new Setter(HorizontalContentAlignmentProperty, System.Windows.HorizontalAlignment.Stretch));
+            style.Setters.Add(new Setter(VerticalContentAlignmentProperty, VerticalAlignment.Top));
+            IconListView.ItemContainerStyle = style;
+
+            // Keep label typography in sync with current icon size
+            foreach (var obj in IconListView.Items)
+            {
+                if (obj is FileItem item)
+                {
+                    item.LabelFontSize = fontSize;
+                    item.IconMargin = new Thickness(0, 0, 0, labelGap);
+                }
+            }
         }
 
         private void GamepadOpenSelectedItem()
@@ -1285,6 +1366,7 @@ namespace Lightspeed_wpf
 
             UpdateFolderButtonSelection(folderNum);
             UpdateFolderNameDisplay();
+            UpdateIconGridLayout();
 
             // 自动选中第一项, 方便手柄操作
             Dispatcher.BeginInvoke(new Action(() =>
@@ -1319,6 +1401,10 @@ namespace Lightspeed_wpf
                 FullPath = path,
                 IsDirectory = isDirectory,
                 IconSize = scaledSize,
+                LabelFontSize = GetLabelFontSize(isIconMode),
+                IconMargin = isIconMode
+                    ? new Thickness(0, 0, 0, GetGridLabelGap())
+                    : GetListIconMargin(),
                 Icon = IconHelper.GetIcon(path, isDirectory, (int)scaledSize)
             };
         }
@@ -1704,6 +1790,10 @@ namespace Lightspeed_wpf
 
             if (BtnQuickStart != null)
             {
+                // Native mode needs no AHK launch button
+                BtnQuickStart.Visibility = _quickLaunchMode == 2
+                    ? Visibility.Collapsed
+                    : Visibility.Visible;
                 BtnQuickStart.ToolTip = _quickLaunchMode switch
                 {
                     1 => "生成并启动 AHK",
@@ -2540,10 +2630,136 @@ return
             }
         }
 
+        private void FileView_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl))
+                return;
+
+            e.Handled = true;
+
+            int step = e.Delta > 0 ? 4 : -4;
+            if (isListView)
+            {
+                double min = SliderIconSize?.Minimum ?? 16;
+                double max = SliderIconSize?.Maximum ?? 64;
+                int next = (int)Math.Clamp(Math.Round(listIconSize) + step, min, max);
+                if (next == (int)Math.Round(listIconSize)) return;
+                listIconSize = next;
+                if (SliderIconSize != null) SliderIconSize.Value = next;
+                if (TxtIconSize != null) TxtIconSize.Text = next.ToString();
+            }
+            else
+            {
+                double min = SliderIconSizeIcon?.Minimum ?? 16;
+                double max = SliderIconSizeIcon?.Maximum ?? 128;
+                int next = (int)Math.Clamp(Math.Round(iconIconSize) + step, min, max);
+                if (next == (int)Math.Round(iconIconSize)) return;
+                iconIconSize = next;
+                if (SliderIconSizeIcon != null) SliderIconSizeIcon.Value = next;
+                if (TxtIconSizeIcon != null) TxtIconSizeIcon.Text = next.ToString();
+            }
+
+            // Instant visual update (scale existing bitmaps) — no shell icon rebuild
+            ApplyIconSizeLive();
+            ScheduleIconSizePersistFromWheel();
+        }
+
+        private void ApplyIconSizeLive()
+        {
+            double scale = GetDpiScaleFactor();
+            if (isListView)
+            {
+                double size = listIconSize * scale;
+                double font = GetLabelFontSize(false);
+                var margin = GetListIconMargin();
+                foreach (var obj in FileListView.Items)
+                {
+                    if (obj is FileItem item)
+                    {
+                        item.IconSize = size;
+                        item.LabelFontSize = font;
+                        item.IconMargin = margin;
+                    }
+                }
+            }
+            else
+            {
+                double size = iconIconSize * scale;
+                foreach (var obj in IconListView.Items)
+                {
+                    if (obj is FileItem item)
+                        item.IconSize = size;
+                }
+                UpdateIconGridLayout();
+            }
+        }
+
+        private void ScheduleIconSizePersistFromWheel()
+        {
+            if (_iconSizeWheelTimer == null)
+            {
+                _iconSizeWheelTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+                _iconSizeWheelTimer.Tick += (_, _) =>
+                {
+                    _iconSizeWheelTimer.Stop();
+                    PersistIconSizeAfterWheel();
+                };
+            }
+
+            _iconSizeWheelTimer.Stop();
+            _iconSizeWheelTimer.Start();
+        }
+
+        private void PersistIconSizeAfterWheel()
+        {
+            if (SliderIconSize != null) listIconSize = (int)SliderIconSize.Value;
+            if (SliderIconSizeIcon != null) iconIconSize = (int)SliderIconSizeIcon.Value;
+            AppSettings.Instance.ListIconSize = (int)listIconSize;
+            AppSettings.Instance.IconIconSize = (int)iconIconSize;
+            AppSettings.Instance.Save();
+            _iconSizeDirty = false;
+
+            // Refresh only current folder icons at the new pixel size (keep other caches)
+            ClearFolderCache(currentFolder);
+            double scale = GetDpiScaleFactor();
+            double listSize = listIconSize * scale;
+            double iconSize = iconIconSize * scale;
+
+            foreach (var obj in FileListView.Items)
+            {
+                if (obj is FileItem item)
+                {
+                    item.IconSize = listSize;
+                    item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, (int)listSize);
+                }
+            }
+            foreach (var obj in IconListView.Items)
+            {
+                if (obj is FileItem item)
+                {
+                    item.IconSize = iconSize;
+                    item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, (int)iconSize);
+                }
+            }
+
+            // Rebuild cache entries for this folder from current items
+            var listItems = new List<FileItem>();
+            var iconItems = new List<FileItem>();
+            foreach (var obj in FileListView.Items)
+                if (obj is FileItem fi) listItems.Add(fi);
+            foreach (var obj in IconListView.Items)
+                if (obj is FileItem fi) iconItems.Add(fi);
+            if (!folderCache.ContainsKey(currentFolder))
+                folderCache[currentFolder] = new Dictionary<bool, List<FileItem>>();
+            folderCache[currentFolder][false] = listItems;
+            folderCache[currentFolder][true] = iconItems;
+            folderCacheTime[currentFolder] = DateTime.Now;
+        }
+
         private void SaveAndClearIconCache()
         {
-            listIconSize = (int)SliderIconSize.Value;
-            iconIconSize = (int)SliderIconSizeIcon.Value;
+            if (SliderIconSize != null) listIconSize = (int)SliderIconSize.Value;
+            if (SliderIconSizeIcon != null) iconIconSize = (int)SliderIconSizeIcon.Value;
             AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
@@ -2556,6 +2772,7 @@ return
         {
             SaveAndClearIconCache();
             NavigateToFolder(currentFolder);
+            UpdateIconGridLayout();
         }
 
         private void BtnListView_Click(object sender, RoutedEventArgs e)
@@ -2580,6 +2797,7 @@ return
             BtnIconView.IsChecked = true;
             AppSettings.Instance.IsListView = false;
             AppSettings.Instance.Save();
+            UpdateIconGridLayout();
         }
 
         private void FileListView_MouseRightClick(object sender, MouseButtonEventArgs e)
@@ -3350,6 +3568,20 @@ return
         {
             get => _iconSize;
             set { _iconSize = value; OnPropertyChanged("IconSize"); }
+        }
+
+        private double _labelFontSize = 11;
+        public double LabelFontSize
+        {
+            get => _labelFontSize;
+            set { _labelFontSize = value; OnPropertyChanged(nameof(LabelFontSize)); }
+        }
+
+        private Thickness _iconMargin = new Thickness(0, 0, 0, 6);
+        public Thickness IconMargin
+        {
+            get => _iconMargin;
+            set { _iconMargin = value; OnPropertyChanged(nameof(IconMargin)); }
         }
 
         public bool JustOpened
