@@ -703,13 +703,13 @@ namespace Lightspeed_wpf
         private double GetGridLabelFontSize() => GetLabelFontSize(true);
 
         private double GetGridLabelGap() =>
-            Math.Max(2.0, iconIconSize * 0.1);
+            Math.Max(3.0, iconIconSize * 0.15);
 
         private double GetGridCellMargin() =>
-            Math.Max(1.0, iconIconSize * 0.06);
+            Math.Max(1.5, iconIconSize * 0.09);
 
         private double GetGridItemPadding() =>
-            Math.Max(2.0, iconIconSize * 0.12);
+            Math.Max(3.0, iconIconSize * 0.18);
 
         private Thickness GetListIconMargin() =>
             new Thickness(0, 0, Math.Max(6.0, listIconSize * 0.35), 0);
@@ -717,14 +717,14 @@ namespace Lightspeed_wpf
         private double GetIconGridCellWidth()
         {
             double iconPx = iconIconSize * GetDpiScaleFactor();
-            // No hard floor — shrink with icon so the grid gets more compact
-            return iconPx + Math.Max(6.0, 24.0 * GetGridScale());
+            // Extra width around icon (1.5x previous spacing)
+            return iconPx + Math.Max(9.0, 36.0 * GetGridScale());
         }
 
         private double GetIconGridCellHeight()
         {
             double iconPx = iconIconSize * GetDpiScaleFactor();
-            return iconPx + Math.Max(14.0, 26.0 * GetGridScale());
+            return iconPx + Math.Max(21.0, 39.0 * GetGridScale());
         }
 
         private void UpdateIconGridLayout()
@@ -1307,6 +1307,7 @@ namespace Lightspeed_wpf
                     {
                         if (item.IsDirectory || (!AppSettings.Instance.HideDesktopIni || !Path.GetFileName(item.FullPath).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
                         {
+                            SyncFileItemDisplay(item, isIconMode: false);
                             FileListView.Items.Add(item);
                         }
                     }
@@ -1314,6 +1315,7 @@ namespace Lightspeed_wpf
                     {
                         if (item.IsDirectory || (!AppSettings.Instance.HideDesktopIni || !Path.GetFileName(item.FullPath).Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)))
                         {
+                            SyncFileItemDisplay(item, isIconMode: true);
                             IconListView.Items.Add(item);
                         }
                     }
@@ -2710,6 +2712,29 @@ return
             _iconSizeWheelTimer.Start();
         }
 
+        private void SyncFileItemDisplay(FileItem item, bool isIconMode)
+        {
+            double scale = GetDpiScaleFactor();
+            if (isIconMode)
+            {
+                double size = iconIconSize * scale;
+                int px = Math.Max(1, (int)Math.Round(size));
+                item.IconSize = size;
+                item.LabelFontSize = GetLabelFontSize(true);
+                item.IconMargin = new Thickness(0, 0, 0, GetGridLabelGap());
+                item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, px);
+            }
+            else
+            {
+                double size = listIconSize * scale;
+                int px = Math.Max(1, (int)Math.Round(size));
+                item.IconSize = size;
+                item.LabelFontSize = GetLabelFontSize(false);
+                item.IconMargin = GetListIconMargin();
+                item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, px);
+            }
+        }
+
         private void PersistIconSizeAfterWheel()
         {
             if (SliderIconSize != null) listIconSize = (int)SliderIconSize.Value;
@@ -2719,41 +2744,36 @@ return
             AppSettings.Instance.Save();
             _iconSizeDirty = false;
 
-            // Refresh only current folder icons at the new pixel size (keep other caches)
-            ClearFolderCache(currentFolder);
-            double scale = GetDpiScaleFactor();
-            double listSize = listIconSize * scale;
-            double iconSize = iconIconSize * scale;
+            // Other folders may still hold items with the old IconSize; that clips into strips
+            // once the grid cell shrinks. Drop all folder caches and rebuild the current one.
+            folderCache.Clear();
+            folderCacheTime.Clear();
 
             foreach (var obj in FileListView.Items)
             {
                 if (obj is FileItem item)
-                {
-                    item.IconSize = listSize;
-                    item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, (int)listSize);
-                }
+                    SyncFileItemDisplay(item, isIconMode: false);
             }
             foreach (var obj in IconListView.Items)
             {
                 if (obj is FileItem item)
-                {
-                    item.IconSize = iconSize;
-                    item.Icon = IconHelper.GetIcon(item.FullPath, item.IsDirectory, (int)iconSize);
-                }
+                    SyncFileItemDisplay(item, isIconMode: true);
             }
 
-            // Rebuild cache entries for this folder from current items
             var listItems = new List<FileItem>();
             var iconItems = new List<FileItem>();
             foreach (var obj in FileListView.Items)
                 if (obj is FileItem fi) listItems.Add(fi);
             foreach (var obj in IconListView.Items)
                 if (obj is FileItem fi) iconItems.Add(fi);
-            if (!folderCache.ContainsKey(currentFolder))
-                folderCache[currentFolder] = new Dictionary<bool, List<FileItem>>();
-            folderCache[currentFolder][false] = listItems;
-            folderCache[currentFolder][true] = iconItems;
+
+            folderCache[currentFolder] = new Dictionary<bool, List<FileItem>>
+            {
+                [false] = listItems,
+                [true] = iconItems
+            };
             folderCacheTime[currentFolder] = DateTime.Now;
+            UpdateIconGridLayout();
         }
 
         private void SaveAndClearIconCache()

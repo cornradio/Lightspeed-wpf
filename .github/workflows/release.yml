@@ -63,15 +63,22 @@ jobs:
         if: steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true'
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
           $tag = "${{ steps.ver.outputs.tag }}"
-          git fetch --tags --force
-          $exists = git rev-parse -q --verify "refs/tags/$tag" 2>$null
-          if ($exists) {
+          Write-Host "Checking remote for tag: $tag"
+
+          # ls-remote exit code is 0 even when no match; avoid rev-parse (exit 1 = missing tag)
+          $remote = git ls-remote --tags origin "refs/tags/$tag"
+          $LASTEXITCODE = 0
+
+          if ($remote -and ($remote -match [regex]::Escape("refs/tags/$tag"))) {
             Write-Host "Tag $tag already exists — skipping release."
             "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           } else {
+            Write-Host "Tag $tag not found — will create release."
             "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
+          exit 0
 
       - name: Pack (framework-dependent + self-contained)
         if: (steps.ver.outputs.changed == 'True' || steps.ver.outputs.changed == 'true') && steps.tagcheck.outputs.exists == 'false'

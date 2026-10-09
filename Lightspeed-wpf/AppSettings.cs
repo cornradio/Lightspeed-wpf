@@ -7,7 +7,15 @@ namespace Lightspeed_wpf
 {
     public class AppSettings
     {
-        private static readonly string settingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+        private static readonly string settingsDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Lightspeed");
+
+        private static readonly string settingsPath = Path.Combine(settingsDir, "settings.json");
+
+        // Legacy location (next to exe / bin output) — migrated once on load
+        private static readonly string legacySettingsPath = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
         public bool AutoStartAHK { get; set; } = false;
         /// <summary>
@@ -64,6 +72,8 @@ namespace Lightspeed_wpf
         {
             try
             {
+                MigrateLegacySettingsIfNeeded();
+
                 if (File.Exists(settingsPath))
                 {
                     string json = File.ReadAllText(settingsPath);
@@ -74,10 +84,24 @@ namespace Lightspeed_wpf
             return new AppSettings();
         }
 
+        private static void MigrateLegacySettingsIfNeeded()
+        {
+            try
+            {
+                if (File.Exists(settingsPath)) return;
+                if (!File.Exists(legacySettingsPath)) return;
+
+                Directory.CreateDirectory(settingsDir);
+                File.Copy(legacySettingsPath, settingsPath, overwrite: false);
+            }
+            catch { }
+        }
+
         public void Save()
         {
             try
             {
+                Directory.CreateDirectory(settingsDir);
                 string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(settingsPath, json);
             }
