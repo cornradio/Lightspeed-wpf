@@ -52,6 +52,17 @@ namespace Lightspeed_wpf
             Hide();
         }
 
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == Key.R &&
+                (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
+            {
+                var main = System.Windows.Application.Current.MainWindow as MainWindow;
+                main?.RefreshCurrentFolder();
+                e.Handled = true;
+            }
+        }
+
         private void SearchBorder_MouseDown(object sender, MouseButtonEventArgs e)
         {
             e.Handled = true; // 阻止点击穿透到背景

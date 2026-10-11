@@ -10,7 +10,8 @@
         Topmost="True"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
-        Deactivated="Window_Deactivated">
+        Deactivated="Window_Deactivated"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <Window.Resources>
         <Style x:Key="SearchScrollBarThumbStyle" TargetType="Thumb">

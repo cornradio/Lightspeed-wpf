@@ -52,6 +52,8 @@ namespace Lightspeed_wpf
         private int currentFolder = 0;
         private string basePath = @"C:\lightspeed";
         private double listIconSize = 30;
+        private double listLabelFontSize = 14;
+        private double gridLabelFontSize = 13;
         private double iconIconSize = 60;
         private Forms.NotifyIcon? notifyIcon;
         private bool isListView = true;
@@ -63,13 +65,11 @@ namespace Lightspeed_wpf
 
         private uint currentModifiers = 0x0001;
         private uint currentKey = 0x53;
-        private bool isCapturingKey = false;
         private FileItem? editingItem = null;
         private Forms.ToolStripMenuItem? trayHotkeyItem;
         private uint searchModifiers = 0x0005;
         private uint searchKey = 0x20;
-        private bool isCapturingSearchKey = false;
-        private bool _loadingSettings = false;
+        private SettingsWindow? _settingsWindow;
         private SearchWindow? _searchWindow;
         private NativeQuickLaunchService? _nativeQuickLaunch;
         private int _quickLaunchMode = 0; // 0=Off, 1=AHK, 2=Native
@@ -165,7 +165,6 @@ namespace Lightspeed_wpf
         private ushort _gamepadHotkeyButtons;
         private bool _gamepadHotkeyTriggered;
         private bool _capturingGamepadHotkey;
-        private bool _iconSizeDirty;
         private DispatcherTimer? _iconSizeWheelTimer;
         private bool _gamepadEnabled = true;
         private const int initialRepeatDelayMs = 200;
@@ -447,12 +446,12 @@ namespace Lightspeed_wpf
             if (Visibility != Visibility.Visible) return;
 
             // --- Back (Select) 键: 关闭设置面板 ---
-            if (SettingsPanel.Visibility == Visibility.Visible)
+            if (_settingsWindow != null && _settingsWindow.IsVisible)
             {
                 if ((pressed & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
                 if ((cur & XINPUT_GAMEPAD_BACK) != 0 && !_backHandled)
                 {
-                    BtnSettings_Click(this, new RoutedEventArgs());
+                    CloseSettingsWindow();
                     _backHandled = true;
                 }
                 if ((released & XINPUT_GAMEPAD_BACK) != 0) _backHandled = false;
@@ -685,17 +684,10 @@ namespace Lightspeed_wpf
 
         private const double GridRefIconSize = 60.0;
 
-        /// <summary>Font grows/shrinks with icon size (no tight ceiling that keeps large icons with tiny text).</summary>
-        private double GetLabelFontSize(bool isIconMode)
-        {
-            if (isIconMode)
-            {
-                // 16→8, 60→13, 96→18, 128→22
-                return Math.Clamp(iconIconSize * 0.22, 8.0, 22.0);
-            }
-            // 16→10, 30→13, 48→18, 64→22
-            return Math.Clamp(listIconSize * 0.42, 10.0, 22.0);
-        }
+        private double GetLabelFontSize(bool isIconMode) =>
+            isIconMode
+                ? Math.Clamp(gridLabelFontSize, 8.0, 36.0)
+                : Math.Clamp(listLabelFontSize, 8.0, 36.0);
 
         private double GetGridScale() =>
             Math.Clamp(iconIconSize / GridRefIconSize, 0.3, 2.2);
@@ -798,6 +790,8 @@ namespace Lightspeed_wpf
             // 确保尺寸变量与设置一致
             listIconSize = AppSettings.Instance.ListIconSize;
             iconIconSize = AppSettings.Instance.IconIconSize;
+            listLabelFontSize = AppSettings.Instance.ListLabelFontSize > 0 ? AppSettings.Instance.ListLabelFontSize : 14;
+            gridLabelFontSize = AppSettings.Instance.GridLabelFontSize > 0 ? AppSettings.Instance.GridLabelFontSize : 13;
 
             if (folderCache.ContainsKey(folderNum)
                 && folderCache[folderNum].ContainsKey(false)
@@ -849,8 +843,6 @@ namespace Lightspeed_wpf
 
         private void LoadSettings()
         {
-            _loadingSettings = true;
-
             int mode = ResolveQuickLaunchMode();
             _quickLaunchMode = mode;
             if (AppSettings.Instance.QuickLaunchMode == null)
@@ -859,28 +851,13 @@ namespace Lightspeed_wpf
                 AppSettings.Instance.AutoStartAHK = mode == 1;
                 AppSettings.Instance.Save();
             }
-            RbQuickLaunchOff.IsChecked = mode == 0;
-            RbQuickLaunchAHK.IsChecked = mode == 1;
-            RbQuickLaunchNative.IsChecked = mode == 2;
             UpdateQuickLaunchPanels();
-
-            ChkAutoStartWithWindows.IsChecked = AppSettings.Instance.AutoStartWithWindows;
-
-            var ver = Assembly.GetExecutingAssembly().GetName().Version;
-            TxtVersion.Text = ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "-";
-            ChkHideDesktopIni.IsChecked = AppSettings.Instance.HideDesktopIni;
-            ChkHideExtensions.IsChecked = AppSettings.Instance.HideExtensions;
-            ChkSingleClickOpen.IsChecked = AppSettings.Instance.SingleClickOpen;
-            ChkDisableInFullscreen.IsChecked = AppSettings.Instance.DisableHotkeyInFullscreen;
-            ApplyToastPositionRadio(AppSettings.Instance.ToastPosition);
             ApplyToastHostPosition();
-            
+
             listIconSize = AppSettings.Instance.ListIconSize;
             iconIconSize = AppSettings.Instance.IconIconSize;
-            SliderIconSize.Value = listIconSize;
-            SliderIconSizeIcon.Value = iconIconSize;
-            TxtIconSize.Text = ((int)listIconSize).ToString();
-            TxtIconSizeIcon.Text = ((int)iconIconSize).ToString();
+            listLabelFontSize = AppSettings.Instance.ListLabelFontSize > 0 ? AppSettings.Instance.ListLabelFontSize : 14;
+            gridLabelFontSize = AppSettings.Instance.GridLabelFontSize > 0 ? AppSettings.Instance.GridLabelFontSize : 13;
 
             isListView = AppSettings.Instance.IsListView;
             if (isListView)
@@ -913,38 +890,13 @@ namespace Lightspeed_wpf
             UpdateGamepadHotkeyDisplay();
 
             ApplyQuickLaunchMode(mode, startBackend: true);
-
-            // 加载 0~9 文件夹别名到设置面板的 TextBox
-            LoadFolderAliasesToUI();
-
-            // 应用窗口大小模式
-            int windowMode = AppSettings.Instance.WindowSizeMode;
-            if (windowMode == 0)
-                RbWindowMode0.IsChecked = true;
-            else if (windowMode == 1)
-                RbWindowMode1.IsChecked = true;
-            else
-                RbWindowMode2.IsChecked = true;
-
-            TxtCustomWidth.Text = AppSettings.Instance.CustomWindowWidth.ToString();
-            TxtCustomHeight.Text = AppSettings.Instance.CustomWindowHeight.ToString();
             ApplyWindowSize();
-
-            // 触控模式
-            ChkTouchMode.IsChecked = AppSettings.Instance.TouchMode;
             ApplyTouchMode();
 
-            // 托盘图标单击行为
-            if (AppSettings.Instance.TrayClickAction == 1)
-                RbTraySearch.IsChecked = true;
-            else
-                RbTrayMain.IsChecked = true;
-
             this.Background = System.Windows.Media.Brushes.Transparent;
-            _loadingSettings = false;
         }
 
-        private void ApplyWindowSize()
+        public void ApplyWindowSize()
         {
             int mode = AppSettings.Instance.WindowSizeMode;
             if (mode == 0)
@@ -966,27 +918,11 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void ApplyTouchMode()
+        public void ApplyTouchMode()
         {
             double f = AppSettings.Instance.TouchMode ? 1.5 : 1.0;
             TitleBarGrid.LayoutTransform = new ScaleTransform(f, f);
             BottomBarBorder.LayoutTransform = new ScaleTransform(f, f);
-        }
-
-        private void ChkTouchMode_Changed(object sender, RoutedEventArgs e)
-        {
-            AppSettings.Instance.TouchMode = ChkTouchMode.IsChecked ?? false;
-            AppSettings.Instance.Save();
-            ApplyTouchMode();
-        }
-
-        private void RbTrayClick_Changed(object sender, RoutedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
-            {
-                AppSettings.Instance.TrayClickAction = int.Parse(rb.Tag.ToString()!);
-                AppSettings.Instance.Save();
-            }
         }
 
         private System.Windows.Media.Color GetAccentColor()
@@ -994,66 +930,10 @@ namespace Lightspeed_wpf
             return System.Windows.Media.Color.FromRgb(0x56, 0x9C, 0xD3);
         }
 
-        private void RbWindowMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.RadioButton rb && rb.IsChecked == true)
-            {
-                int mode = int.Parse(rb.Tag.ToString()!);
-                AppSettings.Instance.WindowSizeMode = mode;
-                AppSettings.Instance.Save();
-                ApplyWindowSize();
-                PanelCustomSize.Visibility = mode == 2 ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-
-        private void TxtCustomSize_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (int.TryParse(TxtCustomWidth.Text, out int w) && w > 0)
-                AppSettings.Instance.CustomWindowWidth = w;
-            if (int.TryParse(TxtCustomHeight.Text, out int h) && h > 0)
-                AppSettings.Instance.CustomWindowHeight = h;
-            AppSettings.Instance.Save();
-            ApplyWindowSize();
-        }
-
-        private void LoadFolderAliasesToUI()
-        {
-            var aliases = AppSettings.Instance.FolderAliases;
-            TxtAlias0.Text = aliases.TryGetValue("0", out var a0) ? a0 : "";
-            TxtAlias1.Text = aliases.TryGetValue("1", out var a1) ? a1 : "";
-            TxtAlias2.Text = aliases.TryGetValue("2", out var a2) ? a2 : "";
-            TxtAlias3.Text = aliases.TryGetValue("3", out var a3) ? a3 : "";
-            TxtAlias4.Text = aliases.TryGetValue("4", out var a4) ? a4 : "";
-            TxtAlias5.Text = aliases.TryGetValue("5", out var a5) ? a5 : "";
-            TxtAlias6.Text = aliases.TryGetValue("6", out var a6) ? a6 : "";
-            TxtAlias7.Text = aliases.TryGetValue("7", out var a7) ? a7 : "";
-            TxtAlias8.Text = aliases.TryGetValue("8", out var a8) ? a8 : "";
-            TxtAlias9.Text = aliases.TryGetValue("9", out var a9) ? a9 : "";
-        }
-
-        private void TxtAlias_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (sender is WpfTextBox tb && tb.Tag is string key)
-            {
-                var aliases = AppSettings.Instance.FolderAliases;
-                string value = tb.Text?.Trim() ?? "";
-                if (string.IsNullOrEmpty(value))
-                {
-                    if (aliases.ContainsKey(key)) aliases.Remove(key);
-                }
-                else
-                {
-                    aliases[key] = value;
-                }
-                AppSettings.Instance.Save();
-                UpdateFolderNameDisplay();
-            }
-        }
-
         private void UpdateHotkeyDisplay()
         {
             string text = GetHotkeyDisplayString(currentModifiers, currentKey);
-            TxtHotkey.Text = text;
+            _settingsWindow?.SetHotkeyText(text);
             if (trayHotkeyItem != null)
             {
                 trayHotkeyItem.Text = $"快捷键: {text}";
@@ -1073,7 +953,7 @@ namespace Lightspeed_wpf
 
         private void UpdateSearchHotkeyDisplay()
         {
-            TxtSearchHotkey.Text = GetHotkeyDisplayString(searchModifiers, searchKey);
+            _settingsWindow?.SetSearchHotkeyText(GetHotkeyDisplayString(searchModifiers, searchKey));
         }
 
         private string GetKeyDisplayName(Key key)
@@ -1101,7 +981,7 @@ namespace Lightspeed_wpf
 
         private void UpdateGamepadHotkeyDisplay()
         {
-            TxtGamepadHotkey.Text = GamepadButtonsToString(_gamepadHotkeyButtons);
+            _settingsWindow?.SetGamepadHotkeyText(GamepadButtonsToString(_gamepadHotkeyButtons));
         }
 
         private string GamepadButtonsToString(ushort buttons)
@@ -1125,11 +1005,11 @@ namespace Lightspeed_wpf
             return parts.Count > 0 ? string.Join("+", parts) : "未设置";
         }
 
-        private void BtnCaptureGamepadHotkey_Click(object sender, RoutedEventArgs e)
+        public void BeginCaptureGamepadHotkey()
         {
             _capturingGamepadHotkey = true;
             _gamepadHotkeyTriggered = false;
-            TxtGamepadHotkey.Text = "按下组合键 (至少3键)...";
+            _settingsWindow?.SetGamepadHotkeyText("按下组合键 (至少3键)...");
             var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
             timer.Tick += (s, args) =>
             {
@@ -1143,7 +1023,7 @@ namespace Lightspeed_wpf
             timer.Start();
         }
 
-        private void BtnClearGamepadHotkey_Click(object sender, RoutedEventArgs e)
+        public void ClearGamepadHotkey()
         {
             _gamepadHotkeyButtons = 0;
             AppSettings.Instance.GamepadHotkeyButtons = 0;
@@ -1265,62 +1145,253 @@ namespace Lightspeed_wpf
                 IsDirectory = isDir
             };
 
-            ContextMenu menu = new ContextMenu();
-            menu.PlacementTarget = placementTarget;
-            menu.Placement = PlacementMode.Mouse;
+            OpenFileContextMenu(
+                item,
+                placementTarget,
+                PlacementMode.Mouse,
+                onOpen: () =>
+                {
+                    GetSearchWindow().Hide();
+                    OpenSearchResultPath(item.FullPath);
+                },
+                onRename: () => BeginRenameFromExternal(item.FullPath),
+                onDelete: () => DeletePathExternal(item.FullPath),
+                onClosed: onClosed);
+        }
 
-            MenuItem openItem = new MenuItem { Header = "打开" };
+        public void RefreshCurrentFolder()
+        {
+            BtnRefresh_Click(this, new RoutedEventArgs());
+        }
+
+        private const uint CF_UNICODETEXT = 13;
+        private const uint GMEM_MOVEABLE = 0x0002;
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool OpenClipboard(IntPtr hWndNewOwner);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool CloseClipboard();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool EmptyClipboard();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetClipboardData(uint uFormat, IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalLock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GlobalUnlock(IntPtr hMem);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr GlobalFree(IntPtr hMem);
+
+        /// <summary>
+        /// 用 Win32 写剪贴板：OpenClipboard 失败立即返回，避免 WPF Clipboard OLE 卡死 UI。
+        /// </summary>
+        private static bool TrySetClipboardUnicodeText(string text)
+        {
+            if (!OpenClipboard(IntPtr.Zero))
+                return false;
+
+            IntPtr hGlobal = IntPtr.Zero;
+            try
+            {
+                EmptyClipboard();
+
+                byte[] bytes = Encoding.Unicode.GetBytes(text + "\0");
+                hGlobal = GlobalAlloc(GMEM_MOVEABLE, (UIntPtr)bytes.Length);
+                if (hGlobal == IntPtr.Zero)
+                    return false;
+
+                IntPtr target = GlobalLock(hGlobal);
+                if (target == IntPtr.Zero)
+                {
+                    GlobalFree(hGlobal);
+                    hGlobal = IntPtr.Zero;
+                    return false;
+                }
+
+                try
+                {
+                    Marshal.Copy(bytes, 0, target, bytes.Length);
+                }
+                finally
+                {
+                    GlobalUnlock(hGlobal);
+                }
+
+                if (SetClipboardData(CF_UNICODETEXT, hGlobal) == IntPtr.Zero)
+                {
+                    GlobalFree(hGlobal);
+                    hGlobal = IntPtr.Zero;
+                    return false;
+                }
+
+                // 成功后由系统接管内存
+                hGlobal = IntPtr.Zero;
+                return true;
+            }
+            finally
+            {
+                CloseClipboard();
+                if (hGlobal != IntPtr.Zero)
+                    GlobalFree(hGlobal);
+            }
+        }
+
+        private void CopyTextToClipboardSafe(string text)
+        {
+            _ = CopyTextToClipboardSafeAsync(text);
+        }
+
+        private async Task CopyTextToClipboardSafeAsync(string text)
+        {
+            // 等菜单关闭/点击消息处理完，且绝不在 UI 线程 Sleep
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            await Task.Yield();
+
+            for (int i = 0; i < 12; i++)
+            {
+                try
+                {
+                    if (TrySetClipboardUnicodeText(text))
+                    {
+                        ShowToast("已复制路径");
+                        return;
+                    }
+                }
+                catch
+                {
+                    // ignore and retry
+                }
+
+                await Task.Delay(40);
+            }
+
+            ShowToast("复制失败，请重试");
+        }
+
+        private void OpenFileContextMenu(
+            FileItem item,
+            FrameworkElement target,
+            PlacementMode placement,
+            Action? onOpen = null,
+            Action? onRename = null,
+            Action? onDelete = null,
+            Action? onClosed = null)
+        {
+            ContextMenu menu = new ContextMenu
+            {
+                PlacementTarget = target,
+                Placement = placement
+            };
+
+            MenuItem openItem = new MenuItem { Header = "打开", InputGestureText = "Enter" };
             openItem.Click += (s, args) =>
             {
-                GetSearchWindow().Hide();
-                OpenSearchResultPath(item.FullPath);
+                if (onOpen != null) onOpen();
+                else OpenItem(item);
             };
             menu.Items.Add(openItem);
 
+            MenuItem? openWithOrFolderItem = null;
+            MenuItem? openLocationItem = null;
+
             if (item.IsDirectory)
             {
-                MenuItem openFolderItem = new MenuItem { Header = "在文件资源管理器中打开" };
-                openFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
-                menu.Items.Add(openFolderItem);
+                openWithOrFolderItem = new MenuItem { Header = "在文件资源管理器中打开", InputGestureText = "O" };
+                openWithOrFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
+                menu.Items.Add(openWithOrFolderItem);
             }
             else
             {
-                MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
-                openWithItem.Click += (s, args) => OpenWith(item.FullPath);
-                menu.Items.Add(openWithItem);
+                openWithOrFolderItem = new MenuItem { Header = "打开方式...", InputGestureText = "O" };
+                openWithOrFolderItem.Click += (s, args) => OpenWith(item.FullPath);
+                menu.Items.Add(openWithOrFolderItem);
 
                 if (item.FullPath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
                 {
-                    MenuItem openLocationItem = new MenuItem { Header = "打开文件所在位置" };
+                    openLocationItem = new MenuItem { Header = "打开文件所在位置", InputGestureText = "I" };
                     openLocationItem.Click += (s, args) => OpenShortcutTargetLocation(item.FullPath);
                     menu.Items.Add(openLocationItem);
                 }
             }
 
-            MenuItem renameItem = new MenuItem { Header = "重命名" };
-            renameItem.Click += (s, args) => BeginRenameFromExternal(item.FullPath);
+            MenuItem renameItem = new MenuItem { Header = "重命名", InputGestureText = "R" };
+            renameItem.Click += (s, args) =>
+            {
+                if (onRename != null) onRename();
+                else RenameItem(item);
+            };
             menu.Items.Add(renameItem);
 
-            MenuItem deleteItem = new MenuItem { Header = "删除" };
-            deleteItem.Click += (s, args) => DeletePathExternal(item.FullPath);
+            MenuItem deleteItem = new MenuItem { Header = "删除", InputGestureText = "D" };
+            deleteItem.Click += (s, args) =>
+            {
+                if (onDelete != null) onDelete();
+                else DeleteItem(item);
+            };
             menu.Items.Add(deleteItem);
 
-            MenuItem copyItem = new MenuItem { Header = "复制路径" };
-            copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
+            MenuItem copyItem = new MenuItem { Header = "复制路径", InputGestureText = "A" };
+            string pathToCopy = item.FullPath;
+            copyItem.Click += (s, args) => CopyTextToClipboardSafe(pathToCopy);
             menu.Items.Add(copyItem);
+
+            // 仅在菜单打开期间生效的快捷键
+            menu.PreviewKeyDown += (s, e) =>
+            {
+                if (Keyboard.Modifiers != ModifierKeys.None && Keyboard.Modifiers != ModifierKeys.Shift)
+                    return;
+
+                Key key = e.Key == Key.System ? e.SystemKey : e.Key;
+                MenuItem? targetItem = key switch
+                {
+                    Key.Enter => openItem,
+                    Key.O => openWithOrFolderItem,
+                    Key.I => openLocationItem,
+                    Key.R => renameItem,
+                    Key.D => deleteItem,
+                    Key.A => copyItem,
+                    _ => null
+                };
+
+                if (targetItem == null)
+                    return;
+
+                e.Handled = true;
+                menu.IsOpen = false;
+                // 关闭后再执行，避免剪贴板/焦点卡死
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    targetItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            };
 
             menu.Closed += (s, args) =>
             {
-                _activeMenu = null;
-                _menuIndex = -1;
+                if (ReferenceEquals(_activeMenu, menu))
+                {
+                    _activeMenu = null;
+                    _menuIndex = -1;
+                }
                 onClosed?.Invoke();
             };
+
             _activeMenu = menu;
             _menuIndex = 0;
             menu.IsOpen = true;
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
+                if (!ReferenceEquals(_activeMenu, menu)) return;
                 var items = menu.Items.OfType<MenuItem>().ToList();
                 HighlightMenuItem(items);
             }), System.Windows.Threading.DispatcherPriority.Loaded);
@@ -1428,6 +1499,8 @@ namespace Lightspeed_wpf
             // 确保尺寸变量与设置一致（防止启动时序问题）
             listIconSize = AppSettings.Instance.ListIconSize;
             iconIconSize = AppSettings.Instance.IconIconSize;
+            listLabelFontSize = AppSettings.Instance.ListLabelFontSize > 0 ? AppSettings.Instance.ListLabelFontSize : 14;
+            gridLabelFontSize = AppSettings.Instance.GridLabelFontSize > 0 ? AppSettings.Instance.GridLabelFontSize : 13;
 
             currentFolder = folderNum;
             string path = Path.Combine(basePath, folderNum.ToString());
@@ -1588,7 +1661,7 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void UpdateFolderNameDisplay()
+        public void UpdateFolderNameDisplay()
         {
             string alias = AppSettings.Instance.FolderAliases.TryGetValue(currentFolder.ToString(), out var a) ? a : "";
             TxtFolderName.Text = string.IsNullOrWhiteSpace(alias) ? "" : alias;
@@ -1633,16 +1706,6 @@ namespace Lightspeed_wpf
                 int folderNum = folderButtons.IndexOf(btn);
                 if (folderNum >= 0)
                 {
-                    if (SettingsPanel.Visibility == Visibility.Visible)
-                    {
-                        SettingsPanel.Visibility = Visibility.Collapsed;
-                        BtnSettings.IsChecked = false;
-                        if (_iconSizeDirty)
-                        {
-                            SaveAndClearIconCache();
-                            _iconSizeDirty = false;
-                        }
-                    }
                     NavigateToFolder(folderNum);
                 }
             }
@@ -1729,7 +1792,7 @@ namespace Lightspeed_wpf
 
         private System.Threading.CancellationTokenSource? _toastCts;
 
-        private async void ShowToast(string message)
+        public async void ShowToast(string message)
         {
             if (ToastText == null || ToastBar == null) return;
 
@@ -1767,72 +1830,40 @@ namespace Lightspeed_wpf
 
         private void BtnSettings_Click(object sender, RoutedEventArgs e)
         {
-            ToggleSettingsPanel();
-            ShowToast(SettingsPanel.Visibility == Visibility.Visible ? "已打开设置" : "已关闭设置");
+            OpenSettingsWindow();
         }
 
-        private void ToggleSettingsPanel()
+        public void OpenSettingsWindow()
         {
-            if (SettingsPanel.Visibility == Visibility.Collapsed)
+            if (_settingsWindow != null && _settingsWindow.IsVisible)
             {
-                if (SettingsDialog != null)
-                    SettingsDialog.MaxHeight = Math.Max(280, ActualHeight - 40);
-                SettingsPanel.Visibility = Visibility.Visible;
+                _settingsWindow.Activate();
                 BtnSettings.IsChecked = true;
-            }
-            else
-            {
-                SettingsPanel.Visibility = Visibility.Collapsed;
-                BtnSettings.IsChecked = false;
-                if (_iconSizeDirty)
-                {
-                    ShowToast("正在刷新图标...");
-                    ApplyIconSizeChanges();
-                    _iconSizeDirty = false;
-                }
-            }
-        }
-
-        private void BtnCloseSettings_Click(object sender, RoutedEventArgs e)
-        {
-            if (SettingsPanel.Visibility == Visibility.Visible)
-                ToggleSettingsPanel();
-        }
-
-        // 点击遮罩关闭；点击弹窗卡片内部不关闭
-        private void SettingsPanel_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.OriginalSource is DependencyObject src && IsInsideSettingsDialog(src))
                 return;
-
-            ToggleSettingsPanel();
-            e.Handled = true;
-        }
-
-        private bool IsInsideSettingsDialog(DependencyObject? original)
-        {
-            if (original == null || SettingsDialog == null)
-                return false;
-
-            // 文本超链接属于 ContentElement, 不在视觉树中
-            if (original is System.Windows.Documents.Hyperlink || original is System.Windows.Documents.Run)
-                return true;
-
-            DependencyObject? d = original;
-            while (d != null)
-            {
-                if (ReferenceEquals(d, SettingsDialog))
-                    return true;
-
-                if (d is System.Windows.Media.Visual || d is System.Windows.Media.Media3D.Visual3D)
-                    d = System.Windows.Media.VisualTreeHelper.GetParent(d);
-                else
-                    break;
             }
-            return false;
+
+            _settingsWindow = new SettingsWindow(this)
+            {
+                Owner = this
+            };
+            _settingsWindow.Show();
+            BtnSettings.IsChecked = true;
+            ShowToast("已打开设置");
         }
 
-        private void BtnCreateFolders_Click(object sender, RoutedEventArgs e)
+        public void CloseSettingsWindow()
+        {
+            _settingsWindow?.Close();
+        }
+
+        public void OnSettingsWindowClosed()
+        {
+            _settingsWindow = null;
+            BtnSettings.IsChecked = false;
+            ShowToast("已关闭设置");
+        }
+
+        public void CreateLightspeedFolders()
         {
             if (!Directory.Exists(basePath))
             {
@@ -1852,13 +1883,13 @@ namespace Lightspeed_wpf
             NavigateToFolder(currentFolder);
         }
 
-        private void BtnGenerateAHK_Click(object sender, RoutedEventArgs e)
+        public void GenerateAHKScript()
         {
             CreateAHK(basePath);
             WpfMessageBox.Show($"AHK 已生成: {Path.Combine(basePath, "lightspeed.ahk")}");
         }
 
-        private void BtnStartAHK_Click(object sender, RoutedEventArgs e)
+        public void StartAHKScript()
         {
             string ahkPath = Path.Combine(basePath, "lightspeed.ahk");
             if (File.Exists(ahkPath))
@@ -1873,12 +1904,6 @@ namespace Lightspeed_wpf
             {
                 WpfMessageBox.Show("AHK 文件不存在，请先点击「生成 AHK」", "提示");
             }
-        }
-
-        private void BtnGenerateAndStart_Click(object sender, RoutedEventArgs e)
-        {
-            CreateAHK(basePath);
-            BtnStartAHK_Click(sender, e);
         }
 
         private void BtnQuickStartAHK_Click(object sender, RoutedEventArgs e)
@@ -1900,12 +1925,10 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void RbQuickLaunchMode_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_loadingSettings) return;
-            if (sender is not System.Windows.Controls.RadioButton rb || rb.IsChecked != true) return;
-            if (!int.TryParse(rb.Tag?.ToString(), out int mode)) return;
+        public int GetQuickLaunchMode() => _quickLaunchMode;
 
+        public void SetQuickLaunchMode(int mode)
+        {
             _quickLaunchMode = mode;
             AppSettings.Instance.QuickLaunchMode = mode;
             AppSettings.Instance.AutoStartAHK = mode == 1;
@@ -1922,7 +1945,7 @@ namespace Lightspeed_wpf
             });
         }
 
-        private void BtnReloadNativeBindings_Click(object sender, RoutedEventArgs e)
+        public void ReloadNativeBindings()
         {
             _nativeQuickLaunch?.RebuildBindings();
             ShowToast("快捷键绑定已重新加载");
@@ -1937,11 +1960,6 @@ namespace Lightspeed_wpf
 
         private void UpdateQuickLaunchPanels()
         {
-            if (PanelAhkControls != null)
-                PanelAhkControls.Visibility = _quickLaunchMode == 1 ? Visibility.Visible : Visibility.Collapsed;
-            if (PanelNativeControls != null)
-                PanelNativeControls.Visibility = _quickLaunchMode == 2 ? Visibility.Visible : Visibility.Collapsed;
-
             if (BtnQuickStart != null)
             {
                 // Native mode needs no AHK launch button
@@ -2078,57 +2096,33 @@ namespace Lightspeed_wpf
             return client;
         }
 
-        private async void BtnCheckUpdate_Click(object sender, RoutedEventArgs e)
+        public async Task<(bool ok, string message, bool isNewer, string? tag)> CheckForUpdateAsync()
         {
-            if (sender is System.Windows.Controls.Button btn) btn.IsEnabled = false;
-            TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x88, 0x88, 0x88));
-            TxtUpdateStatus.Text = "检查中...";
+            string json = await _updateHttpClient.GetStringAsync(ReleasesApiUrl);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            string? tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
+            if (string.IsNullOrWhiteSpace(tag))
+                return (false, "未能获取版本信息", false, null);
 
-            try
+            var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
+            if (TryParseTagVersion(tag, out var latest) && latest > current)
             {
-                string json = await _updateHttpClient.GetStringAsync(ReleasesApiUrl);
-                using var doc = System.Text.Json.JsonDocument.Parse(json);
-                string? tag = doc.RootElement.TryGetProperty("tag_name", out var t) ? t.GetString() : null;
-                if (string.IsNullOrWhiteSpace(tag))
-                {
-                    TxtUpdateStatus.Text = "未能获取版本信息";
-                    return;
-                }
+                return (true,
+                    $"发现新版本 {tag}（当前 v{current.Major}.{current.Minor}.{current.Build}）。",
+                    true,
+                    tag);
+            }
 
-                var current = Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
-                if (TryParseTagVersion(tag, out var latest) && latest > current)
-                {
-                    TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x6B, 0x9F, 0xFF));
-                    TxtUpdateStatus.Text = $"发现新版本 {tag}";
-                    var result = WpfMessageBox.Show(
-                        $"发现新版本 {tag}（当前 v{current.Major}.{current.Minor}.{current.Build}）。\n是否打开下载页面？",
-                        "检查更新",
-                        System.Windows.MessageBoxButton.YesNo,
-                        System.Windows.MessageBoxImage.Information);
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                        {
-                            FileName = ReleasesPageUrl,
-                            UseShellExecute = true
-                        });
-                    }
-                }
-                else
-                {
-                    TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50));
-                    TxtUpdateStatus.Text = "已是最新版本";
-                }
-            }
-            catch (Exception ex)
+            return (true, "已是最新版本", false, tag);
+        }
+
+        public void OpenReleasesPage()
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
-                TxtUpdateStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE8, 0x11, 0x23));
-                TxtUpdateStatus.Text = "检查失败: " + ex.Message;
-            }
-            finally
-            {
-                if (sender is System.Windows.Controls.Button btn2) btn2.IsEnabled = true;
-            }
+                FileName = ReleasesPageUrl,
+                UseShellExecute = true
+            });
         }
 
         private static bool TryParseTagVersion(string tag, out Version version)
@@ -2144,9 +2138,8 @@ namespace Lightspeed_wpf
         private const string AutoStartRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AutoStartRegistryValueName = "Lightspeed";
 
-        private void ChkAutoStartWithWindows_Changed(object sender, RoutedEventArgs e)
+        public void SetAutoStartWithWindows(bool enable)
         {
-            bool enable = ChkAutoStartWithWindows.IsChecked ?? false;
             AppSettings.Instance.AutoStartWithWindows = enable;
             AppSettings.Instance.Save();
 
@@ -2177,54 +2170,7 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void ChkHideDesktopIni_Changed(object sender, RoutedEventArgs e)
-        {
-            AppSettings.Instance.HideDesktopIni = ChkHideDesktopIni.IsChecked ?? false;
-            AppSettings.Instance.Save();
-            ClearFolderCache(currentFolder);
-            NavigateToFolder(currentFolder);
-        }
-
-        private void ChkHideExtensions_Changed(object sender, RoutedEventArgs e)
-        {
-            AppSettings.Instance.HideExtensions = ChkHideExtensions.IsChecked ?? false;
-            AppSettings.Instance.Save();
-            ClearFolderCache(currentFolder);
-            NavigateToFolder(currentFolder);
-        }
-
-        private void ChkSingleClickOpen_Changed(object sender, RoutedEventArgs e)
-        {
-            AppSettings.Instance.SingleClickOpen = ChkSingleClickOpen.IsChecked ?? false;
-            AppSettings.Instance.Save();
-        }
-
-        private void RbToastPosition_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_loadingSettings) return;
-            if (sender is not System.Windows.Controls.RadioButton rb || rb.IsChecked != true) return;
-            if (!int.TryParse(rb.Tag?.ToString(), out int pos)) return;
-
-            AppSettings.Instance.ToastPosition = pos;
-            AppSettings.Instance.Save();
-            ApplyToastHostPosition();
-            ShowToast("提示位置已更新");
-        }
-
-        private void ApplyToastPositionRadio(int position)
-        {
-            switch (position)
-            {
-                case 1: RbToastPos1.IsChecked = true; break;
-                case 2: RbToastPos2.IsChecked = true; break;
-                case 3: RbToastPos3.IsChecked = true; break;
-                case 4: RbToastPos4.IsChecked = true; break;
-                case 5: RbToastPos5.IsChecked = true; break;
-                default: RbToastPos0.IsChecked = true; break;
-            }
-        }
-
-        private void ApplyToastHostPosition()
+        public void ApplyToastHostPosition()
         {
             if (ToastHost == null) return;
             int pos = AppSettings.Instance.ToastPosition;
@@ -2263,12 +2209,6 @@ namespace Lightspeed_wpf
                     ToastHost.Margin = new Thickness(margin);
                     break;
             }
-        }
-
-        private void ChkDisableInFullscreen_Changed(object sender, RoutedEventArgs e)
-        {
-            AppSettings.Instance.DisableHotkeyInFullscreen = ChkDisableInFullscreen.IsChecked ?? true;
-            AppSettings.Instance.Save();
         }
 
         private void Grid_DragOver(object sender, System.Windows.DragEventArgs e)
@@ -2444,92 +2384,61 @@ namespace Lightspeed_wpf
             }
         }
 
-        private void BtnCaptureHotkey_Click(object sender, RoutedEventArgs e)
-        {
-            isCapturingKey = true;
-            TxtHotkey.Text = "请按任意键...";
-            Focus();
-        }
+        public string GetHotkeyDisplayText() => GetHotkeyDisplayString(currentModifiers, currentKey);
+        public string GetSearchHotkeyDisplayText() => GetHotkeyDisplayString(searchModifiers, searchKey);
+        public string GetGamepadHotkeyDisplayText() => GamepadButtonsToString(_gamepadHotkeyButtons);
 
-        private void CaptureHotkey_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        public void CaptureHotkeyFromSettings(System.Windows.Input.KeyEventArgs e, Action<string> setStatus, Action finished)
         {
-            e.Handled = true;
-            isCapturingKey = false;
-            
             if (e.Key == Key.Escape)
             {
-                UpdateHotkeyDisplay();
+                finished();
                 return;
             }
-            
-            Key key = e.Key;
-            if (key == Key.System)
-            {
-                key = e.SystemKey;
-            }
-            
+
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
             if (key == Key.LWin || key == Key.RWin || key == Key.LeftShift || key == Key.RightShift ||
                 key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt)
             {
-                TxtHotkey.Text = "请按一个非修饰键 (含修饰键)...";
-                isCapturingKey = true;
+                setStatus("请按一个非修饰键 (含修饰键)...");
                 return;
             }
-            
+
             uint modifiers = 0;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) modifiers |= 0x0001;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) modifiers |= 0x0002;
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) modifiers |= 0x0004;
-            
             if (modifiers == 0)
             {
                 modifiers = 0x0001;
                 key = Key.S;
             }
-            
+
             uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
             currentModifiers = modifiers;
             currentKey = vk;
-
             AppSettings.Instance.HotkeyModifiers = (int)modifiers;
             AppSettings.Instance.HotkeyKey = (int)vk;
             AppSettings.Instance.Save();
-            
             UnregisterHotKey(windowHandle, HOTKEY_ID);
             RegisterHotKey(windowHandle, HOTKEY_ID, currentModifiers, currentKey);
-
             UpdateHotkeyDisplay();
+            finished();
         }
 
-        private void BtnCaptureSearchHotkey_Click(object sender, RoutedEventArgs e)
+        public void CaptureSearchHotkeyFromSettings(System.Windows.Input.KeyEventArgs e, Action<string> setStatus, Action finished)
         {
-            isCapturingSearchKey = true;
-            TxtSearchHotkey.Text = "请按任意键...";
-            Focus();
-        }
-
-        private void CaptureSearchHotkey_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            e.Handled = true;
-            isCapturingSearchKey = false;
-
             if (e.Key == Key.Escape)
             {
-                UpdateSearchHotkeyDisplay();
+                finished();
                 return;
             }
 
-            Key key = e.Key;
-            if (key == Key.System)
-            {
-                key = e.SystemKey;
-            }
-
+            Key key = e.Key == Key.System ? e.SystemKey : e.Key;
             if (key == Key.LWin || key == Key.RWin || key == Key.LeftShift || key == Key.RightShift ||
                 key == Key.LeftCtrl || key == Key.RightCtrl || key == Key.LeftAlt || key == Key.RightAlt)
             {
-                TxtSearchHotkey.Text = "请按一个非修饰键 (含修饰键)...";
-                isCapturingSearchKey = true;
+                setStatus("请按一个非修饰键 (含修饰键)...");
                 return;
             }
 
@@ -2556,6 +2465,7 @@ namespace Lightspeed_wpf
             RegisterHotKey(windowHandle, SEARCH_HOTKEY_ID, searchModifiers, searchKey);
 
             UpdateSearchHotkeyDisplay();
+            finished();
         }
 
         public void CreateAHK(string folderPath)
@@ -2720,68 +2630,44 @@ return
             }
         }
 
-        private void SliderIconSize_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        public void PreviewIconSize(int listSize, int iconSize)
         {
-            if (TxtIconSize == null) return;
-            TxtIconSize.Text = ((int)SliderIconSize.Value).ToString();
-            _iconSizeDirty = true;
+            listIconSize = listSize;
+            iconIconSize = iconSize;
+            ApplyIconSizeLive();
         }
 
-        private void SliderIconSizeIcon_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        public void PreviewLabelFontSize(double listFont, double gridFont)
         {
-            if (TxtIconSizeIcon == null) return;
-            TxtIconSizeIcon.Text = ((int)SliderIconSizeIcon.Value).ToString();
-            _iconSizeDirty = true;
+            listLabelFontSize = Math.Clamp(listFont, 8.0, 36.0);
+            gridLabelFontSize = Math.Clamp(gridFont, 8.0, 36.0);
+            AppSettings.Instance.ListLabelFontSize = listLabelFontSize;
+            AppSettings.Instance.GridLabelFontSize = gridLabelFontSize;
+            AppSettings.Instance.Save();
+            ApplyLabelFontSizeLive();
         }
 
-        private void TxtIconSize_LostFocus(object sender, RoutedEventArgs e)
+        private void ApplyLabelFontSizeLive()
         {
-            if (int.TryParse(TxtIconSize.Text, out int val))
+            double listFont = GetLabelFontSize(false);
+            double gridFont = GetLabelFontSize(true);
+            foreach (var obj in FileListView.Items)
             {
-                val = Math.Clamp(val, (int)SliderIconSize.Minimum, (int)SliderIconSize.Maximum);
-                SliderIconSize.Value = val;
-                TxtIconSize.Text = val.ToString();
-                _iconSizeDirty = true;
+                if (obj is FileItem item)
+                    item.LabelFontSize = listFont;
             }
-            else
+            foreach (var obj in IconListView.Items)
             {
-                TxtIconSize.Text = ((int)SliderIconSize.Value).ToString();
+                if (obj is FileItem item)
+                    item.LabelFontSize = gridFont;
             }
+            UpdateIconGridLayout();
         }
 
-        private void TxtIconSize_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        public void ApplyIconSizeChangesFromSettings()
         {
-            if (e.Key == Key.Enter)
-            {
-                TxtIconSize_LostFocus(sender, e);
-                Keyboard.ClearFocus();
-                Focus();
-            }
-        }
-
-        private void TxtIconSizeIcon_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (int.TryParse(TxtIconSizeIcon.Text, out int val))
-            {
-                val = Math.Clamp(val, (int)SliderIconSizeIcon.Minimum, (int)SliderIconSizeIcon.Maximum);
-                SliderIconSizeIcon.Value = val;
-                TxtIconSizeIcon.Text = val.ToString();
-                _iconSizeDirty = true;
-            }
-            else
-            {
-                TxtIconSizeIcon.Text = ((int)SliderIconSizeIcon.Value).ToString();
-            }
-        }
-
-        private void TxtIconSizeIcon_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                TxtIconSizeIcon_LostFocus(sender, e);
-                Keyboard.ClearFocus();
-                Focus();
-            }
+            ShowToast("正在刷新图标...");
+            ApplyIconSizeChanges();
         }
 
         private void FileView_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -2794,26 +2680,18 @@ return
             int step = e.Delta > 0 ? 4 : -4;
             if (isListView)
             {
-                double min = SliderIconSize?.Minimum ?? 16;
-                double max = SliderIconSize?.Maximum ?? 64;
-                int next = (int)Math.Clamp(Math.Round(listIconSize) + step, min, max);
+                int next = (int)Math.Clamp(Math.Round(listIconSize) + step, 16, 64);
                 if (next == (int)Math.Round(listIconSize)) return;
                 listIconSize = next;
-                if (SliderIconSize != null) SliderIconSize.Value = next;
-                if (TxtIconSize != null) TxtIconSize.Text = next.ToString();
             }
             else
             {
-                double min = SliderIconSizeIcon?.Minimum ?? 16;
-                double max = SliderIconSizeIcon?.Maximum ?? 128;
-                int next = (int)Math.Clamp(Math.Round(iconIconSize) + step, min, max);
+                int next = (int)Math.Clamp(Math.Round(iconIconSize) + step, 16, 128);
                 if (next == (int)Math.Round(iconIconSize)) return;
                 iconIconSize = next;
-                if (SliderIconSizeIcon != null) SliderIconSizeIcon.Value = next;
-                if (TxtIconSizeIcon != null) TxtIconSizeIcon.Text = next.ToString();
             }
 
-            // Instant visual update (scale existing bitmaps) — no shell icon rebuild
+            _settingsWindow?.SyncIconSizeControls((int)listIconSize, (int)iconIconSize);
             ApplyIconSizeLive();
             ScheduleIconSizePersistFromWheel();
         }
@@ -2889,12 +2767,9 @@ return
 
         private void PersistIconSizeAfterWheel()
         {
-            if (SliderIconSize != null) listIconSize = (int)SliderIconSize.Value;
-            if (SliderIconSizeIcon != null) iconIconSize = (int)SliderIconSizeIcon.Value;
             AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
-            _iconSizeDirty = false;
 
             // Other folders may still hold items with the old IconSize; that clips into strips
             // once the grid cell shrinks. Drop all folder caches and rebuild the current one.
@@ -2930,8 +2805,6 @@ return
 
         private void SaveAndClearIconCache()
         {
-            if (SliderIconSize != null) listIconSize = (int)SliderIconSize.Value;
-            if (SliderIconSizeIcon != null) iconIconSize = (int)SliderIconSizeIcon.Value;
             AppSettings.Instance.ListIconSize = (int)listIconSize;
             AppSettings.Instance.IconIconSize = (int)iconIconSize;
             AppSettings.Instance.Save();
@@ -2998,58 +2871,10 @@ return
 
         private void ShowContextMenu(FileItem item, FrameworkElement target, bool atItem = false)
         {
-            ContextMenu menu = new ContextMenu();
-            menu.PlacementTarget = target;
-            menu.Placement = atItem ? PlacementMode.Bottom : PlacementMode.Mouse;
-
-            MenuItem openItem = new MenuItem { Header = "打开" };
-            openItem.Click += (s, args) => OpenItem(item);
-            menu.Items.Add(openItem);
-
-            if (item.IsDirectory)
-            {
-                MenuItem openFolderItem = new MenuItem { Header = "在文件资源管理器中打开" };
-                openFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
-                menu.Items.Add(openFolderItem);
-            }
-            else
-            {
-                MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
-                openWithItem.Click += (s, args) => OpenWith(item.FullPath);
-                menu.Items.Add(openWithItem);
-
-                if (item.FullPath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
-                {
-                    MenuItem openLocationItem = new MenuItem { Header = "打开文件所在位置" };
-                    openLocationItem.Click += (s, args) => OpenShortcutTargetLocation(item.FullPath);
-                    menu.Items.Add(openLocationItem);
-                }
-            }
-
-            MenuItem renameItem = new MenuItem { Header = "重命名" };
-            renameItem.Click += (s, args) => RenameItem(item);
-            menu.Items.Add(renameItem);
-
-            MenuItem deleteItem = new MenuItem { Header = "删除" };
-            deleteItem.Click += (s, args) => DeleteItem(item);
-            menu.Items.Add(deleteItem);
-
-            MenuItem copyItem = new MenuItem { Header = "复制路径" };
-            copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
-            menu.Items.Add(copyItem);
-
-            // 手柄菜单追踪
-            menu.Closed += (s, args) => { _activeMenu = null; _menuIndex = -1; };
-            _activeMenu = menu;
-            _menuIndex = 0;
-            menu.IsOpen = true;
-
-            // 自动高亮第一项
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                var items = menu.Items.OfType<MenuItem>().ToList();
-                HighlightMenuItem(items);
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            OpenFileContextMenu(
+                item,
+                target,
+                atItem ? PlacementMode.Bottom : PlacementMode.Mouse);
         }
 
         private void HighlightMenuItem(List<MenuItem> items)
@@ -3284,24 +3109,10 @@ return
 
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            if (isCapturingKey)
+            // Ctrl+R: 刷新（任意界面，含设置/重命名中）
+            if (e.Key == Key.R && (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)))
             {
-                CaptureHotkey_KeyDown(sender, e);
-                e.Handled = true;
-                return;
-            }
-
-            if (isCapturingSearchKey)
-            {
-                CaptureSearchHotkey_KeyDown(sender, e);
-                e.Handled = true;
-                return;
-            }
-
-            // 设置面板打开时, Esc 关闭设置返回主页面
-            if (SettingsPanel.Visibility == Visibility.Visible && e.Key == Key.Escape)
-            {
-                ToggleSettingsPanel();
+                RefreshCurrentFolder();
                 e.Handled = true;
                 return;
             }
@@ -3411,7 +3222,7 @@ return
             {
                 if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
                 {
-                    ToggleSettingsPanel();
+                    OpenSettingsWindow();
                 }
                 else
                 {

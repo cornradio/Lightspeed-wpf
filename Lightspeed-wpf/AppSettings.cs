@@ -38,6 +38,10 @@ namespace Lightspeed_wpf
         public bool DisableHotkeyInFullscreen { get; set; } = true;
         public int ListIconSize { get; set; } = 30;
         public int IconIconSize { get; set; } = 60;
+        /// <summary>列表视图文件名/文件夹名字号</summary>
+        public double ListLabelFontSize { get; set; } = 14;
+        /// <summary>网格视图文件名/文件夹名字号</summary>
+        public double GridLabelFontSize { get; set; } = 13;
         // 0=长条模式(默认), 1=宽胖模式, 2=自定义模式
         public int WindowSizeMode { get; set; } = 0;
         public int CustomWindowWidth { get; set; } = 500;
