@@ -62,19 +62,35 @@
             BorderBrush="#66FFFFFF"
             BorderThickness="1"
             CornerRadius="14"
-            Padding="16"
+            Padding="12,8,12,14"
             Margin="10"
             MouseDown="SearchBorder_MouseDown">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0"
+            <!-- Drag handle -->
+            <Border x:Name="DragHandle"
+                    Grid.Row="0"
+                    Height="20"
+                    Background="Transparent"
+                    Cursor="SizeAll"
+                    Margin="0,0,0,6"
+                    MouseLeftButtonDown="DragHandle_MouseLeftButtonDown">
+                <Border Width="40" Height="4" CornerRadius="2"
+                        Background="#55FFFFFF"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        IsHitTestVisible="False"/>
+            </Border>
+
+            <Border Grid.Row="1"
                     Background="#33FFFFFF"
                     CornerRadius="10"
-                    Margin="0,0,0,12"
+                    Margin="0,0,0,10"
                     Padding="2">
                 <Grid>
                     <TextBlock x:Name="SearchPlaceholder"
@@ -97,12 +113,13 @@
             </Border>
 
             <ListView x:Name="SearchResultsList"
-                      Grid.Row="1"
+                      Grid.Row="2"
                       Background="Transparent"
                       BorderThickness="0"
                       Foreground="White"
                       ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                       MouseDoubleClick="SearchResultsList_MouseDoubleClick"
+                      PreviewMouseRightButtonDown="SearchResultsList_PreviewMouseRightButtonDown"
                       PreviewKeyDown="SearchResultsList_PreviewKeyDown">
                 <ListView.ItemContainerStyle>
                     <Style TargetType="ListViewItem">

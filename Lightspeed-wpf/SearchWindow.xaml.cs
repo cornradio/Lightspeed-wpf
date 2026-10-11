@@ -11,6 +11,7 @@ namespace Lightspeed_wpf
     public partial class SearchWindow : Window
     {
         private const string basePath = @"C:\lightspeed";
+        private int _keepAlive;
 
         private class SearchResultItem
         {
@@ -28,6 +29,7 @@ namespace Lightspeed_wpf
 
         public void ShowSearch()
         {
+            _keepAlive = 0;
             SearchTextBox.Text = "";
             SearchPlaceholder.Visibility = Visibility.Visible;
             SearchResultsList.Items.Clear();
@@ -44,12 +46,60 @@ namespace Lightspeed_wpf
 
         private void Window_Deactivated(object sender, EventArgs e)
         {
+            // 右键菜单 / 拖拽等期间保持打开
+            if (_keepAlive > 0)
+                return;
             Hide();
         }
 
         private void SearchBorder_MouseDown(object sender, MouseButtonEventArgs e)
         {
             e.Handled = true; // 阻止点击穿透到背景
+        }
+
+        private void DragHandle_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton != MouseButton.Left)
+                return;
+            try
+            {
+                DragMove();
+            }
+            catch
+            {
+                // DragMove can throw if mouse button already released
+            }
+            e.Handled = true;
+        }
+
+        private void SearchResultsList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            var element = e.OriginalSource as FrameworkElement;
+            var item = element?.DataContext as SearchResultItem;
+            if (item == null)
+                return;
+
+            SearchResultsList.SelectedItem = item;
+            var main = System.Windows.Application.Current.MainWindow as MainWindow;
+            if (main == null)
+                return;
+
+            _keepAlive++;
+            main.ShowExternalFileContextMenu(
+                item.FullPath,
+                SearchResultsList,
+                onClosed: () =>
+                {
+                    _keepAlive = Math.Max(0, _keepAlive - 1);
+                    if (IsVisible)
+                        RefreshResults();
+                });
+            e.Handled = true;
+        }
+
+        private void RefreshResults()
+        {
+            SearchTextBox_TextChanged(SearchTextBox, null!);
         }
 
         private void ShowRecentFiles()

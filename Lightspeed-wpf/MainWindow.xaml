@@ -106,62 +106,198 @@
         </Style>
 
         <Style x:Key="SettingsButtonStyle" TargetType="Button">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Background" Value="#28FFFFFF"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="10" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3DFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#52FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsGhostButtonStyle" TargetType="Button" BasedOn="{StaticResource SettingsButtonStyle}">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#CCFFFFFF"/>
+        </Style>
+
+        <Style x:Key="SettingsTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#33FFFFFF"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
-        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="36"/>
-            <Setter Property="Height" Value="28"/>
+        <Style x:Key="SettingsCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal">
+                            <Border x:Name="box" Width="18" Height="18" CornerRadius="5"
+                                    Background="#22FFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1"
+                                    VerticalAlignment="Center" Margin="0,0,10,0">
+                                <Path x:Name="check" Data="M3,9 L7,13 L15,4" Stroke="White" StrokeThickness="1.8"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                      Visibility="Collapsed" Margin="1"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="box" Property="Background" Value="#3D7CF5"/>
+                                <Setter TargetName="box" Property="BorderBrush" Value="#3D7CF5"/>
+                                <Setter TargetName="check" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="box" Property="BorderBrush" Value="#99FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#CCFFFFFF"/>
+            <Setter Property="Margin" Value="0,0,10,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="bd" Background="#18FFFFFF" CornerRadius="9" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#333D7CF5"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#28FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Caption buttons: vector glyphs, equal hit targets -->
+        <Style x:Key="CaptionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#99FFFFFF"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="8">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#33FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#22FFFFFF"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
         </Style>
 
-        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource TitleBarButtonStyle}">
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#E81123"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
+        <Style x:Key="CaptionCloseButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="Transparent" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#E81123"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#C50F1F"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
+        <Style x:Key="SettingsSectionStyle" TargetType="Border">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="SettingsHintStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#66FFFFFF"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+        </Style>
+
+        <Style x:Key="SettingsLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#AAFFFFFF"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button" BasedOn="{StaticResource CaptionButtonStyle}"/>
+        <Style x:Key="CloseButtonStyle" TargetType="Button" BasedOn="{StaticResource CaptionCloseButtonStyle}"/>
 
         <Style x:Key="ViewToggleButtonStyle" TargetType="ToggleButton">
             <Setter Property="Width" Value="30"/>
@@ -343,29 +479,6 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
 
-        <Style TargetType="ContextMenu">
-            <Setter Property="Background" Value="#E61A1A1A"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#66FFFFFF"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="4"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ContextMenu">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="10"
-                                Padding="{TemplateBinding Padding}"
-                                SnapsToDevicePixels="True">
-                            <ScrollViewer CanContentScroll="True">
-                                <ItemsPresenter Margin="0"/>
-                            </ScrollViewer>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Border x:Name="WindowBorder" BorderThickness="0" BorderBrush="Transparent" Background="Transparent">
@@ -408,10 +521,19 @@
             </Border>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button x:Name="BtnSearch" Content="🔍" Style="{StaticResource SideButtonStyle}" Click="BtnSearch_Click" ToolTip="搜索 (Ctrl+P)" Height="26" Width="28" FontSize="12"/>
-                <Button Content="—" Style="{StaticResource TitleBarButtonStyle}" Click="MinimizeButton_Click"/>
-                <Button Content="□" Style="{StaticResource TitleBarButtonStyle}" Click="MaximizeButton_Click"/>
-                <Button Content="✕" Style="{StaticResource CloseButtonStyle}" Click="CloseButton_Click"/>
+                <Button x:Name="BtnSearch" Content="🔍" Style="{StaticResource SideButtonStyle}" Click="BtnSearch_Click" ToolTip="搜索 (Ctrl+P)" Height="26" Width="28" FontSize="12" Margin="0,0,4,0"/>
+                <Button Style="{StaticResource CaptionButtonStyle}" Click="MinimizeButton_Click" ToolTip="最小化">
+                    <Path Data="M0,0.5 L10,0.5" Stroke="#CCFFFFFF" StrokeThickness="1.2" Width="10" Height="1"
+                          Stretch="None" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                </Button>
+                <Button x:Name="BtnMaximize" Style="{StaticResource CaptionButtonStyle}" Click="MaximizeButton_Click" ToolTip="最大化">
+                    <Path x:Name="MaximizeIcon" Data="M1,1 H9 V9 H1 Z" Stroke="#CCFFFFFF" StrokeThickness="1.2"
+                          Width="10" Height="10" Stretch="None"/>
+                </Button>
+                <Button Style="{StaticResource CaptionCloseButtonStyle}" Click="CloseButton_Click" ToolTip="关闭 (Shift+点击退出)">
+                    <Path Data="M0,0 L8,8 M8,0 L0,8" Stroke="White" StrokeThickness="1.2" Width="8" Height="8"
+                          Stretch="None" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -493,189 +615,6 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <Border x:Name="SettingsPanel"
-                    Background="#E61A1A1A"
-                    Visibility="Collapsed"
-                    Padding="20"
-                    PreviewMouseLeftButtonDown="SettingsPanel_PreviewMouseLeftButtonDown">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Background="Transparent">
-                    <StackPanel>
-                        <TextBlock Text="设置" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,20"/>
-
-                        <TextBlock Text="通用设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <CheckBox x:Name="ChkAutoStartWithWindows" Content="开机自启动" Foreground="White" Margin="0,5" Checked="ChkAutoStartWithWindows_Changed" Unchecked="ChkAutoStartWithWindows_Changed"/>
-                        <CheckBox x:Name="ChkTouchMode" Content="触控模式 (顶部/底部栏放大 2 倍)" Foreground="White" Margin="0,5" Checked="ChkTouchMode_Changed" Unchecked="ChkTouchMode_Changed"/>
-
-                        <TextBlock Text="托盘图标单击行为" Foreground="White" Margin="0,10,0,5"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <RadioButton x:Name="RbTrayMain" Content="打开主界面" Foreground="White" GroupName="TrayClick" Margin="0,0,15,0" Checked="RbTrayClick_Changed" Tag="0"/>
-                            <RadioButton x:Name="RbTraySearch" Content="打开搜索页面" Foreground="White" GroupName="TrayClick" Checked="RbTrayClick_Changed" Tag="1"/>
-                        </StackPanel>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="快捷键设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <TextBlock Text="当前快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtHotkey" Text="Alt+S" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="修改快捷键" Margin="10,0,0,0" Click="BtnCaptureHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <TextBlock Text="搜索快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtSearchHotkey" Text="Alt+Shift+Space" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="修改搜索快捷键" Margin="10,0,0,0" Click="BtnCaptureSearchHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
-                        </StackPanel>
-                        <CheckBox x:Name="ChkDisableInFullscreen" Content="全屏程序中禁用快捷键" Foreground="White" Margin="0,5" Checked="ChkDisableInFullscreen_Changed" Unchecked="ChkDisableInFullscreen_Changed"/>
-
-                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                            <TextBlock Text="手柄快捷键: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtGamepadHotkey" Text="未设置" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="录入手柄" Margin="10,0,0,0" Click="BtnCaptureGamepadHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="8,4" FontSize="11"/>
-                            <Button Content="清除" Margin="5,0,0,0" Click="BtnClearGamepadHotkey_Click" Style="{StaticResource SettingsButtonStyle}" Padding="8,4" FontSize="11"/>
-                        </StackPanel>
-                        <TextBlock Text="点击录入，同时按下至少3个键即可 (支持 LT/RT 和方向键)" Foreground="#66FFFFFF" FontSize="10" Margin="0,3,0,0"/>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="快速启动" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <TextBlock Text="快捷键仅在桌面或任务栏获得焦点时生效，避免在其他应用中误触。" Foreground="#66FFFFFF" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <RadioButton x:Name="RbQuickLaunchOff" Content="关闭" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="0"/>
-                            <RadioButton x:Name="RbQuickLaunchAHK" Content="AutoHotkey" Foreground="White" GroupName="QuickLaunch" Margin="0,0,16,0" Checked="RbQuickLaunchMode_Changed" Tag="1"/>
-                            <RadioButton x:Name="RbQuickLaunchNative" Content="程序本体" Foreground="White" GroupName="QuickLaunch" Checked="RbQuickLaunchMode_Changed" Tag="2"/>
-                        </StackPanel>
-
-                        <Button Content="Create Folders" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click" HorizontalAlignment="Left" Margin="0,0,0,8" Padding="12,6"/>
-
-                        <StackPanel x:Name="PanelAhkControls">
-                            <UniformGrid Rows="1" Margin="0,0,0,5">
-                                <Button Content="Generate AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
-                                <Button Content="Start AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
-                                <Button Content="Generate+Start" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
-                            </UniformGrid>
-                            <TextBlock Margin="0,5">
-                                <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate">
-                                    <TextBlock Text="下载 AHK (懒人包)" Foreground="#CCFFFFFF"/>
-                                </Hyperlink>
-                            </TextBlock>
-                        </StackPanel>
-
-                        <StackPanel x:Name="PanelNativeControls" Visibility="Collapsed">
-                            <TextBlock Text="Alt+0~9 打开文件夹；按住数字再按文件名首字母启动。启动时显示图标 HUD。" Foreground="#88FFFFFF" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                            <Button Content="重新加载快捷键绑定" Style="{StaticResource SettingsButtonStyle}" Click="BtnReloadNativeBindings_Click" HorizontalAlignment="Left" Padding="12,6"/>
-                        </StackPanel>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="显示设置" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <CheckBox x:Name="ChkHideDesktopIni" Content="隐藏 desktop.ini 文件" Foreground="White" Margin="0,5" Checked="ChkHideDesktopIni_Changed" Unchecked="ChkHideDesktopIni_Changed"/>
-                        <CheckBox x:Name="ChkHideExtensions" Content="隐藏文件扩展名" Foreground="White" Margin="0,5" Checked="ChkHideExtensions_Changed" Unchecked="ChkHideExtensions_Changed"/>
-                        <CheckBox x:Name="ChkSingleClickOpen" Content="单击打开文件/文件夹" Foreground="White" Margin="0,5" Checked="ChkSingleClickOpen_Changed" Unchecked="ChkSingleClickOpen_Changed"/>
-
-                        <TextBlock Text="弹窗提示位置" Foreground="White" Margin="0,15,0,8"/>
-                        <UniformGrid Columns="3" Rows="2" Width="280" HorizontalAlignment="Left">
-                            <RadioButton x:Name="RbToastPos1" Content="左上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="1"/>
-                            <RadioButton x:Name="RbToastPos0" Content="正上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="0"/>
-                            <RadioButton x:Name="RbToastPos2" Content="右上" Foreground="White" GroupName="ToastPos" Margin="0,0,0,8" Checked="RbToastPosition_Changed" Tag="2"/>
-                            <RadioButton x:Name="RbToastPos4" Content="左下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="4"/>
-                            <RadioButton x:Name="RbToastPos3" Content="正下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="3"/>
-                            <RadioButton x:Name="RbToastPos5" Content="右下" Foreground="White" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="5"/>
-                        </UniformGrid>
-                        <TextBlock Text="同时作用于主窗口 Toast 与快速启动 HUD" Foreground="#66FFFFFF" FontSize="10" Margin="0,4,0,0"/>
-                        
-                        <TextBlock Text="图标大小 (列表)" Foreground="White" Margin="0,15,0,5"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="SliderIconSize" Width="200" Minimum="16" Maximum="64" Value="30" ValueChanged="SliderIconSize_ValueChanged"/>
-                            <TextBox x:Name="TxtIconSize" Width="45" Margin="10,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="30" LostFocus="TxtIconSize_LostFocus" KeyDown="TxtIconSize_KeyDown"/>
-                        </StackPanel>
-
-                        <TextBlock Text="图标大小 (网格)" Foreground="White" Margin="0,10,0,5"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <Slider x:Name="SliderIconSizeIcon" Width="200" Minimum="16" Maximum="128" Value="60" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
-                            <TextBox x:Name="TxtIconSizeIcon" Width="45" Margin="10,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" Text="60" LostFocus="TxtIconSizeIcon_LostFocus" KeyDown="TxtIconSizeIcon_KeyDown"/>
-                        </StackPanel>
-
-                        <TextBlock Text="窗口大小模式" Foreground="White" Margin="0,15,0,5"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <RadioButton x:Name="RbWindowMode0" Content="长条模式" Foreground="White" GroupName="WindowSize" Margin="0,0,15,0" Checked="RbWindowMode_Changed" Tag="0"/>
-                            <RadioButton x:Name="RbWindowMode1" Content="宽胖模式" Foreground="White" GroupName="WindowSize" Margin="0,0,15,0" Checked="RbWindowMode_Changed" Tag="1"/>
-                            <RadioButton x:Name="RbWindowMode2" Content="自定义" Foreground="White" GroupName="WindowSize" Checked="RbWindowMode_Changed" Tag="2"/>
-                        </StackPanel>
-                        <StackPanel x:Name="PanelCustomSize" Orientation="Horizontal" Margin="0,5" Visibility="Collapsed">
-                            <TextBlock Text="W:" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtCustomWidth" Width="60" Margin="5,0,10,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
-                            <TextBlock Text="H:" Foreground="White" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtCustomHeight" Width="60" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
-                        </StackPanel>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="文件夹别名 (悬停数字按钮时显示)" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <UniformGrid Columns="2" Margin="0,5">
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="0:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias0" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="0"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="1:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias1" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="1"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="2:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias2" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="2"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="3:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias3" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="3"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="4:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias4" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="4"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="5:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias5" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="5"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="6:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias6" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="6"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="7:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias7" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="7"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="8:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias8" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="8"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,3">
-                                <TextBlock Text="9:" Foreground="White" Width="20" VerticalAlignment="Center" FontWeight="Bold"/>
-                                <TextBox x:Name="TxtAlias9" Width="160" Margin="5,0,0,0" Background="#33FFFFFF" Foreground="White" BorderThickness="0" Padding="5,3" LostFocus="TxtAlias_LostFocus" Tag="9"/>
-                            </StackPanel>
-                        </UniformGrid>
-                        <TextBlock Text="提示: 别名仅保存在配置文件中,不会修改文件夹名。留空则悬停时显示文件夹实际名称。" Foreground="#66FFFFFF" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="帮助链接" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <TextBlock Margin="0,5">
-                            <Hyperlink NavigateUri="https://lightspeed.cornradio.org/" RequestNavigate="Hyperlink_RequestNavigate">
-                                <TextBlock Text="https://lightspeed.cornradio.org/" Foreground="#CCFFFFFF"/>
-                            </Hyperlink>
-                        </TextBlock>
-
-                        <Separator Background="#33FFFFFF" Margin="0,15"/>
-
-                        <TextBlock Text="关于" Foreground="#88FFFFFF" FontSize="12" Margin="0,0,0,10"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,5">
-                            <TextBlock Text="当前版本: " Foreground="White" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="TxtVersion" Text="-" Foreground="#CCFFFFFF" VerticalAlignment="Center" FontWeight="Bold"/>
-                            <Button Content="检查更新" Margin="10,0,0,0" Click="BtnCheckUpdate_Click" Style="{StaticResource SettingsButtonStyle}" Padding="10,5"/>
-                            <TextBlock x:Name="TxtUpdateStatus" Text="" Foreground="#88FFFFFF" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                        </StackPanel>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
         </Grid>
 
         <Border Grid.Row="2" x:Name="BottomBarBorder" Background="#14FFFFFF" Padding="8,4" Margin="8,4,8,8" CornerRadius="10">
@@ -738,6 +677,254 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+            <Border x:Name="SettingsPanel" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="100"
+                    Background="#99000000"
+                    Visibility="Collapsed"
+                    PreviewMouseLeftButtonDown="SettingsPanel_PreviewMouseLeftButtonDown">
+                <Border x:Name="SettingsDialog"
+                        Width="520"
+                        MaxWidth="560"
+                        MinHeight="280"
+                        MaxHeight="720"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Background="#F01C1C1F"
+                        BorderBrush="#40FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="16"
+                        Margin="24"
+                        ClipToBounds="True">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="20,16,12,8">
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,40,0">
+                                <TextBlock Text="设置" Foreground="White" FontSize="18" FontWeight="SemiBold"/>
+                                <TextBlock Text="调整启动、显示与快捷键偏好" Style="{StaticResource SettingsHintStyle}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Style="{StaticResource CaptionCloseButtonStyle}"
+                                    Width="32" Height="28" Margin="0"
+                                    Click="BtnCloseSettings_Click" ToolTip="关闭设置">
+                                <Path Data="M0,0 L8,8 M8,0 L0,8" Stroke="White" StrokeThickness="1.2" Width="8" Height="8"
+                                      Stretch="None" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            </Button>
+                        </Grid>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Background="Transparent" Padding="20,0,20,16" Margin="0,0,0,4">
+                            <StackPanel>
+                        <!-- General -->
+                        <Border Style="{StaticResource SettingsSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="通用" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <CheckBox x:Name="ChkAutoStartWithWindows" Content="开机自启动" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkAutoStartWithWindows_Changed" Unchecked="ChkAutoStartWithWindows_Changed"/>
+                                <CheckBox x:Name="ChkTouchMode" Content="触控模式（顶部 / 底部栏放大 2 倍）" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkTouchMode_Changed" Unchecked="ChkTouchMode_Changed"/>
+                                <TextBlock Text="托盘图标单击" Style="{StaticResource SettingsLabelStyle}" Margin="0,4,0,8"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="RbTrayMain" Content="打开主界面" Style="{StaticResource SettingsRadioStyle}" GroupName="TrayClick" Checked="RbTrayClick_Changed" Tag="0"/>
+                                    <RadioButton x:Name="RbTraySearch" Content="打开搜索页面" Style="{StaticResource SettingsRadioStyle}" GroupName="TrayClick" Checked="RbTrayClick_Changed" Tag="1"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Hotkeys -->
+                        <Border Style="{StaticResource SettingsSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="快捷键" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="唤起主窗口" Foreground="#88FFFFFF" FontSize="11"/>
+                                        <TextBlock x:Name="TxtHotkey" Text="Alt+S" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="修改" Click="BtnCaptureHotkey_Click" Style="{StaticResource SettingsButtonStyle}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="搜索" Foreground="#88FFFFFF" FontSize="11"/>
+                                        <TextBlock x:Name="TxtSearchHotkey" Text="Alt+Shift+Space" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="修改" Click="BtnCaptureSearchHotkey_Click" Style="{StaticResource SettingsButtonStyle}" VerticalAlignment="Center"/>
+                                </Grid>
+                                <CheckBox x:Name="ChkDisableInFullscreen" Content="全屏程序中禁用快捷键" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkDisableInFullscreen_Changed" Unchecked="ChkDisableInFullscreen_Changed"/>
+                                <Grid Margin="0,4,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="手柄快捷键" Foreground="#88FFFFFF" FontSize="11"/>
+                                        <TextBlock x:Name="TxtGamepadHotkey" Text="未设置" Foreground="White" FontSize="14" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Content="录入" Click="BtnCaptureGamepadHotkey_Click" Style="{StaticResource SettingsButtonStyle}"/>
+                                        <Button Content="清除" Click="BtnClearGamepadHotkey_Click" Style="{StaticResource SettingsGhostButtonStyle}" Margin="0,0,0,8"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Text="点击录入，同时按下至少 3 个键（支持 LT/RT 与方向键）" Style="{StaticResource SettingsHintStyle}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Quick launch -->
+                        <Border Style="{StaticResource SettingsSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="快速启动" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock Text="快捷键仅在桌面或任务栏获得焦点时生效，避免在其他应用中误触。" Style="{StaticResource SettingsHintStyle}" Margin="0,0,0,12"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <RadioButton x:Name="RbQuickLaunchOff" Content="关闭" Style="{StaticResource SettingsRadioStyle}" GroupName="QuickLaunch" Checked="RbQuickLaunchMode_Changed" Tag="0"/>
+                                    <RadioButton x:Name="RbQuickLaunchAHK" Content="AutoHotkey" Style="{StaticResource SettingsRadioStyle}" GroupName="QuickLaunch" Checked="RbQuickLaunchMode_Changed" Tag="1"/>
+                                    <RadioButton x:Name="RbQuickLaunchNative" Content="程序本体" Style="{StaticResource SettingsRadioStyle}" GroupName="QuickLaunch" Checked="RbQuickLaunchMode_Changed" Tag="2"/>
+                                </StackPanel>
+                                <Button Content="创建文件夹" Style="{StaticResource SettingsButtonStyle}" Click="BtnCreateFolders_Click" HorizontalAlignment="Left"/>
+                                <StackPanel x:Name="PanelAhkControls" Margin="0,4,0,0">
+                                    <WrapPanel>
+                                        <Button Content="生成 AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAHK_Click"/>
+                                        <Button Content="启动 AHK" Style="{StaticResource SettingsButtonStyle}" Click="BtnStartAHK_Click"/>
+                                        <Button Content="生成并启动" Style="{StaticResource SettingsButtonStyle}" Click="BtnGenerateAndStart_Click"/>
+                                    </WrapPanel>
+                                    <TextBlock Margin="0,4,0,0">
+                                        <Hyperlink NavigateUri="https://kasusa.lanzoul.com/iClHk28thruj" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#99B4FF">
+                                            下载 AHK（懒人包）
+                                        </Hyperlink>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel x:Name="PanelNativeControls" Visibility="Collapsed" Margin="0,4,0,0">
+                                    <TextBlock Text="Alt+0~9 打开文件夹；按住数字再按文件名首字母启动。启动时显示图标 HUD。" Style="{StaticResource SettingsHintStyle}" Margin="0,0,0,10"/>
+                                    <Button Content="重新加载快捷键绑定" Style="{StaticResource SettingsButtonStyle}" Click="BtnReloadNativeBindings_Click" HorizontalAlignment="Left"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Display -->
+                        <Border Style="{StaticResource SettingsSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="显示" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <CheckBox x:Name="ChkHideDesktopIni" Content="隐藏 desktop.ini 文件" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkHideDesktopIni_Changed" Unchecked="ChkHideDesktopIni_Changed"/>
+                                <CheckBox x:Name="ChkHideExtensions" Content="隐藏文件扩展名" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkHideExtensions_Changed" Unchecked="ChkHideExtensions_Changed"/>
+                                <CheckBox x:Name="ChkSingleClickOpen" Content="单击打开文件 / 文件夹" Style="{StaticResource SettingsCheckBoxStyle}" Checked="ChkSingleClickOpen_Changed" Unchecked="ChkSingleClickOpen_Changed"/>
+
+                                <TextBlock Text="弹窗提示位置" Style="{StaticResource SettingsLabelStyle}" Margin="0,8,0,8"/>
+                                <UniformGrid Columns="3" Rows="2" Width="320" HorizontalAlignment="Left">
+                                    <RadioButton x:Name="RbToastPos1" Content="左上" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="1"/>
+                                    <RadioButton x:Name="RbToastPos0" Content="正上" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="0"/>
+                                    <RadioButton x:Name="RbToastPos2" Content="右上" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="2"/>
+                                    <RadioButton x:Name="RbToastPos4" Content="左下" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="4"/>
+                                    <RadioButton x:Name="RbToastPos3" Content="正下" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="3"/>
+                                    <RadioButton x:Name="RbToastPos5" Content="右下" Style="{StaticResource SettingsRadioStyle}" GroupName="ToastPos" Checked="RbToastPosition_Changed" Tag="5"/>
+                                </UniformGrid>
+                                <TextBlock Text="同时作用于主窗口 Toast 与快速启动 HUD" Style="{StaticResource SettingsHintStyle}" Margin="0,0,0,14"/>
+
+                                <TextBlock Text="图标大小（列表）" Style="{StaticResource SettingsLabelStyle}" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Slider x:Name="SliderIconSize" Width="220" Minimum="16" Maximum="64" Value="30" VerticalAlignment="Center" ValueChanged="SliderIconSize_ValueChanged"/>
+                                    <TextBox x:Name="TxtIconSize" Width="48" Margin="12,0,0,0" Style="{StaticResource SettingsTextBoxStyle}" TextAlignment="Center" Text="30" LostFocus="TxtIconSize_LostFocus" KeyDown="TxtIconSize_KeyDown"/>
+                                </StackPanel>
+
+                                <TextBlock Text="图标大小（网格）" Style="{StaticResource SettingsLabelStyle}" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                    <Slider x:Name="SliderIconSizeIcon" Width="220" Minimum="16" Maximum="128" Value="60" VerticalAlignment="Center" ValueChanged="SliderIconSizeIcon_ValueChanged"/>
+                                    <TextBox x:Name="TxtIconSizeIcon" Width="48" Margin="12,0,0,0" Style="{StaticResource SettingsTextBoxStyle}" TextAlignment="Center" Text="60" LostFocus="TxtIconSizeIcon_LostFocus" KeyDown="TxtIconSizeIcon_KeyDown"/>
+                                </StackPanel>
+
+                                <TextBlock Text="窗口大小模式" Style="{StaticResource SettingsLabelStyle}" Margin="0,0,0,8"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="RbWindowMode0" Content="长条模式" Style="{StaticResource SettingsRadioStyle}" GroupName="WindowSize" Checked="RbWindowMode_Changed" Tag="0"/>
+                                    <RadioButton x:Name="RbWindowMode1" Content="宽胖模式" Style="{StaticResource SettingsRadioStyle}" GroupName="WindowSize" Checked="RbWindowMode_Changed" Tag="1"/>
+                                    <RadioButton x:Name="RbWindowMode2" Content="自定义" Style="{StaticResource SettingsRadioStyle}" GroupName="WindowSize" Checked="RbWindowMode_Changed" Tag="2"/>
+                                </StackPanel>
+                                <StackPanel x:Name="PanelCustomSize" Orientation="Horizontal" Margin="0,4,0,0" Visibility="Collapsed">
+                                    <TextBlock Text="W" Foreground="#AAFFFFFF" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="TxtCustomWidth" Width="72" Style="{StaticResource SettingsTextBoxStyle}" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
+                                    <TextBlock Text="H" Foreground="#AAFFFFFF" VerticalAlignment="Center" Margin="14,0,6,0"/>
+                                    <TextBox x:Name="TxtCustomHeight" Width="72" Style="{StaticResource SettingsTextBoxStyle}" TextAlignment="Center" LostFocus="TxtCustomSize_LostFocus"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Aliases -->
+                        <Border Style="{StaticResource SettingsSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="文件夹别名" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <TextBlock Text="悬停数字按钮时显示；仅保存在配置中，不改文件夹名。留空则显示实际名称。" Style="{StaticResource SettingsHintStyle}" Margin="0,0,0,12"/>
+                                <UniformGrid Columns="2">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                                        <TextBlock Text="0" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias0" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="0"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="1" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias1" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="1"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                                        <TextBlock Text="2" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias2" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="2"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="3" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias3" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="3"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                                        <TextBlock Text="4" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias4" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="4"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="5" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias5" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="5"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,8">
+                                        <TextBlock Text="6" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias6" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="6"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="7" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias7" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="7"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                        <TextBlock Text="8" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias8" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="8"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="9" Foreground="#88FFFFFF" Width="18" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBox x:Name="TxtAlias9" Width="150" Style="{StaticResource SettingsTextBoxStyle}" LostFocus="TxtAlias_LostFocus" Tag="9"/>
+                                    </StackPanel>
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- About -->
+                        <Border Style="{StaticResource SettingsSectionStyle}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="关于" Style="{StaticResource SettingsSectionTitleStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                    <TextBlock Text="版本" Foreground="#88FFFFFF" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock x:Name="TxtVersion" Text="-" Foreground="White" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button Content="检查更新" Margin="14,0,0,0" Click="BtnCheckUpdate_Click" Style="{StaticResource SettingsButtonStyle}" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="TxtUpdateStatus" Text="" Foreground="#88FFFFFF" VerticalAlignment="Center" Margin="10,0,0,8"/>
+                                </StackPanel>
+                                <TextBlock>
+                                    <Hyperlink NavigateUri="https://lightspeed.cornradio.org/" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#99B4FF">
+                                        lightspeed.cornradio.org
+                                    </Hyperlink>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Border>
 
         <Popup x:Name="AliasPopup"
                Placement="Top"

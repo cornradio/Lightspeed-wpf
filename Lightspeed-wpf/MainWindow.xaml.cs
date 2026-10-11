@@ -1238,6 +1238,150 @@ namespace Lightspeed_wpf
             GetSearchWindow().ShowSearch();
         }
 
+        /// <summary>
+        /// 供 SearchWindow 等外部界面弹出与主窗口一致的文件右键菜单。
+        /// </summary>
+        public void ShowExternalFileContextMenu(string path, FrameworkElement placementTarget, Action? onClosed = null)
+        {
+            bool isDir = Directory.Exists(path);
+            if (!isDir && !File.Exists(path))
+            {
+                onClosed?.Invoke();
+                return;
+            }
+
+            string name = Path.GetFileName(path);
+            string displayName = name;
+            if (!isDir && AppSettings.Instance.HideExtensions && name.Contains('.'))
+            {
+                int dotIndex = name.LastIndexOf('.');
+                displayName = name.Substring(0, dotIndex);
+            }
+
+            var item = new FileItem
+            {
+                Name = displayName,
+                FullPath = path,
+                IsDirectory = isDir
+            };
+
+            ContextMenu menu = new ContextMenu();
+            menu.PlacementTarget = placementTarget;
+            menu.Placement = PlacementMode.Mouse;
+
+            MenuItem openItem = new MenuItem { Header = "打开" };
+            openItem.Click += (s, args) =>
+            {
+                GetSearchWindow().Hide();
+                OpenSearchResultPath(item.FullPath);
+            };
+            menu.Items.Add(openItem);
+
+            if (item.IsDirectory)
+            {
+                MenuItem openFolderItem = new MenuItem { Header = "在文件资源管理器中打开" };
+                openFolderItem.Click += (s, args) => OpenInExplorer(item.FullPath);
+                menu.Items.Add(openFolderItem);
+            }
+            else
+            {
+                MenuItem openWithItem = new MenuItem { Header = "打开方式..." };
+                openWithItem.Click += (s, args) => OpenWith(item.FullPath);
+                menu.Items.Add(openWithItem);
+
+                if (item.FullPath.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                {
+                    MenuItem openLocationItem = new MenuItem { Header = "打开文件所在位置" };
+                    openLocationItem.Click += (s, args) => OpenShortcutTargetLocation(item.FullPath);
+                    menu.Items.Add(openLocationItem);
+                }
+            }
+
+            MenuItem renameItem = new MenuItem { Header = "重命名" };
+            renameItem.Click += (s, args) => BeginRenameFromExternal(item.FullPath);
+            menu.Items.Add(renameItem);
+
+            MenuItem deleteItem = new MenuItem { Header = "删除" };
+            deleteItem.Click += (s, args) => DeletePathExternal(item.FullPath);
+            menu.Items.Add(deleteItem);
+
+            MenuItem copyItem = new MenuItem { Header = "复制路径" };
+            copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
+            menu.Items.Add(copyItem);
+
+            menu.Closed += (s, args) =>
+            {
+                _activeMenu = null;
+                _menuIndex = -1;
+                onClosed?.Invoke();
+            };
+            _activeMenu = menu;
+            _menuIndex = 0;
+            menu.IsOpen = true;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var items = menu.Items.OfType<MenuItem>().ToList();
+                HighlightMenuItem(items);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void BeginRenameFromExternal(string path)
+        {
+            GetSearchWindow().Hide();
+
+            int? folderNum = GetParentFolderNum(path);
+            if (!folderNum.HasValue)
+            {
+                WpfMessageBox.Show("无法定位该文件所在的 Lightspeed 文件夹，请在主窗口中重命名。");
+                return;
+            }
+
+            ShowFromTray();
+            NavigateToFolder(folderNum.Value);
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                SelectItemByPath(path);
+                FileItem? fi = FindFileItemByPath(path);
+                if (fi != null)
+                    RenameItem(fi);
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void DeletePathExternal(string path)
+        {
+            try
+            {
+                MoveToRecycleBin(path);
+                AppSettings.Instance.RecentFiles.RemoveAll(p =>
+                    string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+                AppSettings.Instance.Save();
+
+                int? folderNum = GetParentFolderNum(path);
+                if (folderNum.HasValue)
+                {
+                    ClearFolderCache(folderNum.Value);
+                    if (folderNum.Value == currentFolder && IsVisible)
+                        NavigateToFolder(currentFolder);
+                }
+            }
+            catch (Exception ex)
+            {
+                WpfMessageBox.Show($"删除失败: {ex.Message}");
+            }
+        }
+
+        private FileItem? FindFileItemByPath(string fullPath)
+        {
+            var items = isListView ? FileListView.Items : IconListView.Items;
+            foreach (var obj in items)
+            {
+                if (obj is FileItem fi && fi.FullPath.Equals(fullPath, StringComparison.OrdinalIgnoreCase))
+                    return fi;
+            }
+            return null;
+        }
+
         // 供 SearchWindow 打开搜索结果时调用：记录最近使用 + 导航/打开
         public void OpenSearchResultPath(string path)
         {
@@ -1631,6 +1775,8 @@ namespace Lightspeed_wpf
         {
             if (SettingsPanel.Visibility == Visibility.Collapsed)
             {
+                if (SettingsDialog != null)
+                    SettingsDialog.MaxHeight = Math.Max(280, ActualHeight - 40);
                 SettingsPanel.Visibility = Visibility.Visible;
                 BtnSettings.IsChecked = true;
             }
@@ -1647,16 +1793,27 @@ namespace Lightspeed_wpf
             }
         }
 
-        // 点击设置面板空白区域关闭设置（交互控件除外）
+        private void BtnCloseSettings_Click(object sender, RoutedEventArgs e)
+        {
+            if (SettingsPanel.Visibility == Visibility.Visible)
+                ToggleSettingsPanel();
+        }
+
+        // 点击遮罩关闭；点击弹窗卡片内部不关闭
         private void SettingsPanel_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (IsSettingsInteractive(e.OriginalSource as DependencyObject)) return;
+            if (e.OriginalSource is DependencyObject src && IsInsideSettingsDialog(src))
+                return;
+
             ToggleSettingsPanel();
             e.Handled = true;
         }
 
-        private bool IsSettingsInteractive(DependencyObject? original)
+        private bool IsInsideSettingsDialog(DependencyObject? original)
         {
+            if (original == null || SettingsDialog == null)
+                return false;
+
             // 文本超链接属于 ContentElement, 不在视觉树中
             if (original is System.Windows.Documents.Hyperlink || original is System.Windows.Documents.Run)
                 return true;
@@ -1664,13 +1821,8 @@ namespace Lightspeed_wpf
             DependencyObject? d = original;
             while (d != null)
             {
-                if (d is System.Windows.Controls.Primitives.ButtonBase ||
-                    d is WpfTextBox ||
-                    d is System.Windows.Controls.Primitives.RangeBase ||
-                    d is System.Windows.Controls.Primitives.Thumb)
-                {
+                if (ReferenceEquals(d, SettingsDialog))
                     return true;
-                }
 
                 if (d is System.Windows.Media.Visual || d is System.Windows.Media.Media3D.Visual3D)
                     d = System.Windows.Media.VisualTreeHelper.GetParent(d);
@@ -2874,8 +3026,6 @@ return
                 }
             }
 
-            menu.Items.Add(new Separator());
-
             MenuItem renameItem = new MenuItem { Header = "重命名" };
             renameItem.Click += (s, args) => RenameItem(item);
             menu.Items.Add(renameItem);
@@ -2883,8 +3033,6 @@ return
             MenuItem deleteItem = new MenuItem { Header = "删除" };
             deleteItem.Click += (s, args) => DeleteItem(item);
             menu.Items.Add(deleteItem);
-
-            menu.Items.Add(new Separator());
 
             MenuItem copyItem = new MenuItem { Header = "复制路径" };
             copyItem.Click += (s, args) => WpfClipboard.SetText(item.FullPath);
@@ -2907,25 +3055,11 @@ return
         private void HighlightMenuItem(List<MenuItem> items)
         {
             if (_activeMenu == null) return;
-            // 清除所有高亮
-            foreach (var obj in _activeMenu.Items)
-            {
-                if (obj is MenuItem mi)
-                {
-                    mi.Background = System.Windows.Media.Brushes.Transparent;
-                    mi.Foreground = System.Windows.Media.Brushes.White;
-                }
-            }
-            // 高亮当前项
+            // 通过 Focus 驱动 MenuItem.IsHighlighted，避免本地 Background 盖住鼠标悬停
             if (_menuIndex >= 0 && _menuIndex < items.Count)
             {
                 var highlighted = items[_menuIndex];
-                if (highlighted != null)
-                {
-                    highlighted.Background = new System.Windows.Media.SolidColorBrush(GetAccentColor());
-                    highlighted.Foreground = System.Windows.Media.Brushes.White;
-                    highlighted.Focus();
-                }
+                highlighted?.Focus();
             }
         }
 
@@ -3425,6 +3559,7 @@ return
                 WindowState = WindowState.Normal;
             else
                 WindowState = WindowState.Maximized;
+            UpdateMaximizeCaptionIcon();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -3439,8 +3574,28 @@ return
             }
         }
 
+        private void UpdateMaximizeCaptionIcon()
+        {
+            if (MaximizeIcon == null || BtnMaximize == null)
+                return;
+
+            if (WindowState == WindowState.Maximized)
+            {
+                // Restore: two overlapping squares
+                MaximizeIcon.Data = Geometry.Parse("M3,1 H9 V7 M1,3 H7 V9 H1 Z");
+                BtnMaximize.ToolTip = "还原";
+            }
+            else
+            {
+                MaximizeIcon.Data = Geometry.Parse("M1,1 H9 V9 H1 Z");
+                BtnMaximize.ToolTip = "最大化";
+            }
+        }
+
         private void Window_StateChanged(object sender, EventArgs e)
         {
+            UpdateMaximizeCaptionIcon();
+
             if (WindowState == WindowState.Minimized && notifyIcon != null)
             {
                 Hide();

@@ -24,6 +24,7 @@ namespace Lightspeed_wpf
         private readonly Dispatcher _dispatcher;
         private readonly string _basePath;
         private readonly HashSet<int> _heldDigits = new();
+        private readonly HashSet<int> _swallowedDigits = new();
         private readonly object _mapLock = new();
 
         private Dictionary<string, lightspeed_obj> _itemMap = new(StringComparer.OrdinalIgnoreCase);
@@ -67,6 +68,7 @@ namespace Lightspeed_wpf
             UnhookWindowsHookEx(_hookId);
             _hookId = IntPtr.Zero;
             _heldDigits.Clear();
+            _swallowedDigits.Clear();
         }
 
         public void RebuildBindings()
@@ -132,7 +134,13 @@ namespace Lightspeed_wpf
                 if (msg == WM_KEYUP || msg == WM_SYSKEYUP)
                 {
                     if (IsDigitVk(vk))
-                        _heldDigits.Remove(DigitFromVk(vk));
+                    {
+                        int digit = DigitFromVk(vk);
+                        _heldDigits.Remove(digit);
+                        // Only eat keyup if we ate the matching keydown (keeps rename typing intact)
+                        if (_swallowedDigits.Remove(digit))
+                            return (IntPtr)1;
+                    }
                     return CallNextHookEx(_hookId, nCode, wParam, lParam);
                 }
 
@@ -141,6 +149,14 @@ namespace Lightspeed_wpf
 
                 // Never interfere unless desktop / taskbar has focus
                 if (!IsDesktopOrTaskbarFocused())
+                {
+                    _heldDigits.Clear();
+                    _swallowedDigits.Clear();
+                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
+                }
+
+                // Renaming a desktop item: focus is an Edit box — never steal digits
+                if (IsShellEditFocused())
                 {
                     _heldDigits.Clear();
                     return CallNextHookEx(_hookId, nCode, wParam, lParam);
@@ -155,17 +171,19 @@ namespace Lightspeed_wpf
                     {
                         string folderPath = System.IO.Path.Combine(_basePath, digit.ToString());
                         RequestLaunch($"文件夹 {digit}", folderPath);
+                        _swallowedDigits.Add(digit);
                         return (IntPtr)1;
                     }
 
+                    // Treat digit as quick-launch modifier so Explorer doesn't beep on dead key input
                     _heldDigits.Add(digit);
-                    return CallNextHookEx(_hookId, nCode, wParam, lParam);
+                    _swallowedDigits.Add(digit);
+                    return (IntPtr)1;
                 }
 
                 if (_heldDigits.Count > 0 && vk >= 0x41 && vk <= 0x5A)
                 {
                     char letter = char.ToLowerInvariant((char)vk);
-                    // Prefer the most recently held digit conceptually: use any held digit that matches a binding
                     foreach (int digit in _heldDigits)
                     {
                         string hotkey = $"{digit} & {letter}";
@@ -203,6 +221,38 @@ namespace Lightspeed_wpf
             GetClassName(hwnd, className, className.Capacity);
             string cls = className.ToString();
             return cls is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd";
+        }
+
+        /// <summary>
+        /// True when shell rename / text field has focus (so digits must pass through).
+        /// </summary>
+        private static bool IsShellEditFocused()
+        {
+            IntPtr fg = GetForegroundWindow();
+            if (fg == IntPtr.Zero) return false;
+
+            uint fgThread = GetWindowThreadProcessId(fg, out _);
+            uint thisThread = GetCurrentThreadId();
+            bool attached = false;
+            if (fgThread != 0 && fgThread != thisThread)
+                attached = AttachThreadInput(thisThread, fgThread, true);
+
+            try
+            {
+                IntPtr focus = GetFocus();
+                if (focus == IntPtr.Zero) return false;
+
+                var className = new StringBuilder(64);
+                GetClassName(focus, className, className.Capacity);
+                string cls = className.ToString();
+                return cls is "Edit" or "RichEdit" or "RichEdit20W" or "RichEdit20A"
+                    or "RICHEDIT50W" or "TextBox";
+            }
+            finally
+            {
+                if (attached)
+                    AttachThreadInput(thisThread, fgThread, false);
+            }
         }
 
         private static bool IsDigitVk(int vk) =>
@@ -246,6 +296,18 @@ namespace Lightspeed_wpf
 
         [DllImport("user32.dll")]
         private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetFocus();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("kernel32.dll")]
+        private static extern uint GetCurrentThreadId();
+
+        [DllImport("user32.dll")]
+        private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
